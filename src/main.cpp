@@ -1,11 +1,15 @@
 #include <Arduino.h>
+#include "floatSwitch.h"
+
+const int FLOAT_PIN = A1;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Startar...");
+  pinMode(FLOAT_PIN, INPUT_PULLUP);
+
 }
 
 void loop() {
-  Serial.println("Tick");
+  readFloat(digitalRead(FLOAT_PIN));
   delay(2000);
 }
