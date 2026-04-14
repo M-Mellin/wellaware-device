@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include "floatSensor.h"
 
-void readFloatSensor(int PIN) {
+String readFloatSensor(int PIN) {
   int value = digitalRead(PIN);
   Serial.println(value == LOW ? "CLOSED" : "OPEN");
+  return value == LOW ? "CLOSED" : "OPEN";
 }

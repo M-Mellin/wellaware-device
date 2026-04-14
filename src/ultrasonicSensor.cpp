@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "ultrasonicSensor.h"
 
-void readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
+float readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
   long duration;
   float distance;
 
@@ -22,4 +22,6 @@ void readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
     Serial.print(distance);
     Serial.println(" cm");
   }
+
+  return distance;
 }
