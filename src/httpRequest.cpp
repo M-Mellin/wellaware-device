@@ -2,7 +2,7 @@
 #include <WiFiClientSecure.h>
 #include <Arduino.h>
 
-void sendMessage(float distance, const String& floatState, const String& deviceId) {
+void sendMessage(float distance, float signal, const String& floatState, const String& deviceId) {
 
   static WiFiClientSecure client;
   client.setInsecure();   
@@ -18,7 +18,8 @@ void sendMessage(float distance, const String& floatState, const String& deviceI
 
   String json = "{\"level\":" + String(distance) +
                 ",\"floatState\":\"" + floatState +
-                "\",\"deviceId\":\"" + deviceId + "\"}";
+                "\",\"signal\":" + String(signal) +
+                ",\"deviceId\":\"" + deviceId + "\"}";
 
   Serial.println("Sending JSON:");
   Serial.println(json);

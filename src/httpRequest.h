@@ -1,4 +1,4 @@
 #include <Arduino.h>
 #pragma once
 
-void sendMessage(float distance, const String& floatState, const String& deviceId);
+void sendMessage(float distance, float signal, const String& floatState, const String& deviceId);
