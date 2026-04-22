@@ -29,10 +29,10 @@ void loop() {
     connectWifi(ssid, password);
   } else {
     float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
-    bool isOpen = readFloatSensor(FLOAT_PIN);
+    bool isClosed = readFloatSensor(FLOAT_PIN);
     float signal = getWifiSignal();
 
-    const char* floatState = isOpen ? "OPEN" : "CLOSED";
+    const char* floatState = isClosed ? "CLOSED" : "OPEN";
 
     Serial.println("Sending...");
     unsigned long start = millis();
@@ -44,5 +44,5 @@ void loop() {
     Serial.println("Sent!");
   }
 
-  delay(10000);
+  delay(1000);
 }
