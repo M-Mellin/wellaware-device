@@ -5,6 +5,8 @@
 #include "wifiConnect.h"
 #include "httpRequest.h"
 #include "wifiSignal.h"
+#include "syncTime.h"
+#include "localData.h"
 
 const int FLOAT_PIN = A1;
 const int ECHO_PIN = 4;
@@ -26,41 +28,6 @@ bool timeInitialized = false;
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
 
-bool syncTime() {
-  Serial.println("Syncing time with NTP...");
-
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  struct tm timeinfo;
-
-  if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obatin time");
-    return false;
-  }
-
-  Serial.println("Time synchronized successfully.");
-  return true;
-}
-
-void addMeasurement(float level, unsigned long timestamp) {
-  if (measurementCount >= MAX_MEASUREMENTS) {
-    Serial.println("Buffer full. Measurment skipped.");
-    return;
-  }
-
-  pendingMeasurements[measurementCount].level = level;
-  pendingMeasurements[measurementCount].timestamp = timestamp;
-
-  measurementCount++;
-
-  Serial.print("Saved locally. Count: ");
-  Serial.println(measurementCount);
-}
-
-void clearMeasurements() {
-  measurementCount = 0;
-  Serial.println("Measurement cleared.");
-}
-
 void setup() {
   Serial.begin(115200);
 
@@ -72,7 +39,7 @@ void setup() {
 
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
-      timeInitialized = syncTime();
+      timeInitialized = syncTime(ntpServer, gmtOffset_sec, daylightOffset_sec);
     }
 
     if (!timeInitialized) {
@@ -100,7 +67,7 @@ void loop() {
 
   unsigned long unixTimestamp = time(nullptr);
 
-  addMeasurement(distance, unixTimestamp);
+  addMeasurement(pendingMeasurements, distance, unixTimestamp, measurementCount, MAX_MEASUREMENTS);
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Trying to send pending measurements...");
@@ -114,7 +81,7 @@ void loop() {
     );
 
     if (success) {
-      clearMeasurements();
+      clearMeasurements(measurementCount);
       Serial.println("SUCCESS: Measurements have been sent.");
     } else {
       Serial.println("Send failed. Local data is kept.");
