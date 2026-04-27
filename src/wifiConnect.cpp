@@ -4,12 +4,12 @@
 bool connectWifi(const char* ssid, const char* password) {
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Connecting...");
+    return false;
+  } else {
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
   }
-
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-  return true;
 }
