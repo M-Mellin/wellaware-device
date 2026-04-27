@@ -17,8 +17,29 @@ const String DEVICE_ID = "Device-X1";
 
 const int MAX_MEASUREMENTS = 500;
 
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 0;
+const int daylightOffset_sec = 0;
+
+bool timeInitialized = false;
+
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
+
+bool syncTime() {
+  Serial.println("Syncing time with NTP...");
+
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  struct tm timeinfo;
+
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obatin time");
+    return false;
+  }
+
+  Serial.println("Time synchronized successfully.");
+  return true;
+}
 
 void addMeasurement(float level, unsigned long timestamp) {
   if (measurementCount >= MAX_MEASUREMENTS) {
@@ -48,22 +69,40 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
 
   connectWifi(ssid, password);
+
+  while (!timeInitialized) {
+    if (WiFi.status() == WL_CONNECTED) {
+      timeInitialized = syncTime();
+    }
+
+    if (!timeInitialized) {
+      Serial.println("Watiing for valid time...");
+      delay(5000);
+
+      if (WiFi.status() != WL_CONNECTED) {
+        connectWifi(ssid, password);
+      }
+    }
+  }
 }
 
 void loop() {
-  float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
-
-  addMeasurement(distance, millis());
-
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi lost. Reconnecting...");
     connectWifi(ssid, password);
-  } else {
-    float signal = getWifiSignal();
-    bool isClosed = readFloatSensor(FLOAT_PIN);
+  }
 
-    const String floatState = isClosed ? "CLOSED" : "OPEN";
+  float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
+  bool isClosed = readFloatSensor(FLOAT_PIN);
+  float signal = getWifiSignal();
 
+  const String floatState = isClosed ? "CLOSED" : "OPEN";
+
+  unsigned long unixTimestamp = time(nullptr);
+
+  addMeasurement(distance, unixTimestamp);
+
+  if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Trying to send pending measurements...");
 
     bool success = sendMessage(
@@ -76,11 +115,10 @@ void loop() {
 
     if (success) {
       clearMeasurements();
-      Serial.println("SUCESS: Measurements has been sent.");
+      Serial.println("SUCCESS: Measurements have been sent.");
     } else {
-      Serial.println("Send failed. Local data is saved.");
+      Serial.println("Send failed. Local data is kept.");
     }
   }
-
   delay(5000);
 }

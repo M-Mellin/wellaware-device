@@ -31,7 +31,7 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
   for (int i = 0; i < count; i++) {
     json += "{";
     json += "\"level\":" + String(measurements[i].level) + ",";
-    json += "\"date\":\"" + String(measurements[i].timestamp) + "\"";
+    json += "\"timestamp\":\"" + String(measurements[i].timestamp) + "\"";
     json += "}";
 
     if (i < count - 1) {
