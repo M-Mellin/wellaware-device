@@ -89,5 +89,5 @@ void loop() {
       Serial.println("Send failed. Local data is kept.");
     }
   }
-  delay(5000);
+  delay(3000);
 }
