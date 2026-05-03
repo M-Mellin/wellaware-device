@@ -19,9 +19,9 @@ float readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
   } else {
     distance = duration * 0.0343 / 2;
     Serial.print("Distance: ");
-    Serial.print(distance);
-    Serial.println(" cm");
+    Serial.print(distance * 10);
+    Serial.println(" mm");
   }
 
-  return distance;
+  return distance * 10;
 }

@@ -1,4 +1,19 @@
-#include <Arduino.h>
-#pragma once
+#ifndef HTTP_REQUEST_H
+#define HTTP_REQUEST_H
 
-void sendMessage(float distance, float signal, const String& floatState, const String& deviceId);
+#include <Arduino.h>
+
+struct Measurement {
+  float level;
+  unsigned long timestamp;
+};
+
+bool sendMessage(
+  Measurement measurements[],
+  int count,
+  float signal,
+  const String& floatState,
+  const String& deviceId
+);
+
+#endif

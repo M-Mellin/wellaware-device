@@ -1,8 +1,14 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <Arduino.h>
+#include "httpRequest.h"
 
-void sendMessage(float distance, float signal, const String& floatState, const String& deviceId) {
+bool sendMessage(Measurement measurements[], int count, float signal, const String& floatState, const String& deviceId) {
+
+  if (count == 0) {
+    Serial.println("No measurments to send.");
+    return true;
+  }
 
   static WiFiClientSecure client;
   client.setInsecure();   
@@ -16,10 +22,25 @@ void sendMessage(float distance, float signal, const String& floatState, const S
 
   http.addHeader("Content-Type", "application/json");
 
-  String json = "{\"level\":" + String(distance) +
-                ",\"floatState\":\"" + floatState +
-                "\",\"signal\":" + String(signal) +
-                ",\"deviceId\":\"" + deviceId + "\"}";
+  String json = "{";
+  json += "\"deviceId\":\"" + deviceId + "\",";
+  json += "\"signal\":" + String(signal) + ",";
+  json += "\"floatState\":\"" + floatState + "\",";
+  json += "\"data\":[";
+
+  for (int i = 0; i < count; i++) {
+    json += "{";
+    json += "\"level\":" + String(measurements[i].level) + ",";
+    json += "\"timestamp\":\"" + String(measurements[i].timestamp) + "\"";
+    json += "}";
+
+    if (i < count - 1) {
+      json += ",";
+    }
+  }
+
+  json += "]";
+  json += "}";
 
   Serial.println("Sending JSON:");
   Serial.println(json);
@@ -29,9 +50,11 @@ void sendMessage(float distance, float signal, const String& floatState, const S
   Serial.print("HTTP code: ");
   Serial.println(code);
 
-  if (code > 0) {
-    String response = http.getString();
-    Serial.println(response);
+  bool success = false;
+
+  if (code == 204 || code == 200) {
+    success = true;
+    Serial.println("Upload successful.");
   } else {
     Serial.print("HTTP error: ");
     Serial.println(http.errorToString(code));
@@ -39,5 +62,5 @@ void sendMessage(float distance, float signal, const String& floatState, const S
 
   http.end();
 
-  return;
+  return success;
 }
