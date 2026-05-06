@@ -9,15 +9,20 @@
 #include "localData.h"
 #include "deviceId.h"
 #include <esp_system.h>
+#include "credentials.h"
+#include "setupMode.h"
 
 const int FLOAT_PIN = A1;
 const int ECHO_PIN = 4;
 const int TRIG_PIN = 5;
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
+String wifiSsid;
+String wifiPassword;
 
-const String DEVICE_ID = getDeviceId();
+String deviceId;
+String deviceSecret;
+String jwtToken;
+unsigned long tokenExpiry = 0;
 
 const int MAX_MEASUREMENTS = 500;
 
@@ -33,11 +38,19 @@ int measurementCount = 0;
 void setup() {
   Serial.begin(115200);
 
+  bool hasCredentials = loadCredentials(deviceId, deviceSecret);
+  bool hasWifi = loadWifi(wifiSsid, wifiPassword);
+
+  if (!hasCredentials || !hasWifi) {
+    startSetupMode();
+    return;
+  }
+
   pinMode(FLOAT_PIN, INPUT_PULLUP);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
 
-  connectWifi(ssid, password);
+  connectWifi(wifiSsid, wifiPassword);
 
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
@@ -49,7 +62,7 @@ void setup() {
       delay(5000);
 
       if (WiFi.status() != WL_CONNECTED) {
-        connectWifi(ssid, password);
+        connectWifi(wifiSsid, wifiPassword);
       }
     }
   }
@@ -58,7 +71,7 @@ void setup() {
 void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi lost. Reconnecting...");
-    connectWifi(ssid, password);
+    connectWifi(wifiSsid, wifiPassword);
   }
 
   float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
@@ -79,7 +92,7 @@ void loop() {
       measurementCount,
       signal,
       floatState,
-      DEVICE_ID
+      deviceId
     );
 
     if (success) {
