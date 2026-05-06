@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "httpRequest.h"
 
-bool sendMessage(Measurement measurements[], int count, float signal, const String& floatState, const String& deviceId, const String& token) {
+bool sendMessage(Measurement measurements[], int count, float signal, const String& deviceId, const String& token) {
 
   if (count == 0) {
     Serial.println("No measurments to send.");
@@ -26,7 +26,6 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
   String json = "{";
   json += "\"deviceId\":\"" + deviceId + "\",";
   json += "\"signal\":" + String(signal) + ",";
-  json += "\"floatState\":\"" + floatState + "\",";
   json += "\"data\":[";
 
   for (int i = 0; i < count; i++) {

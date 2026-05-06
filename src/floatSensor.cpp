@@ -1,3 +1,5 @@
+// DEPRECATED - NOT IN USE
+
 #include <Arduino.h>
 #include "floatSensor.h"
 

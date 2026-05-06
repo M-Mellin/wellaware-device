@@ -13,7 +13,6 @@
 #include "setupMode.h"
 #include "fetchToken.h"
 
-const int FLOAT_PIN = A1;
 const int ECHO_PIN = 4;
 const int TRIG_PIN = 5;
 
@@ -47,7 +46,6 @@ void setup() {
     return;
   }
 
-  pinMode(FLOAT_PIN, INPUT_PULLUP);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
 
@@ -76,10 +74,7 @@ void loop() {
   }
 
   float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
-  bool isClosed = readFloatSensor(FLOAT_PIN);
   float signal = getWifiSignal();
-
-  const String floatState = isClosed ? "CLOSED" : "OPEN";
 
   unsigned long unixTimestamp = time(nullptr);
 
@@ -92,7 +87,6 @@ void loop() {
       pendingMeasurements,
       measurementCount,
       signal,
-      floatState,
       deviceId,
       jwtToken
     );

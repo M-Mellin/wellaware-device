@@ -32,7 +32,7 @@ String fetchToken(String deviceId, String secret) {
 
   if (code == 200) {
     Serial.println("Token received");
-    DynamicJsonDocument doc(2048);
+    JsonDocument doc;
 
     deserializeJson(doc, response);
 

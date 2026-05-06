@@ -12,7 +12,6 @@ bool sendMessage(
   Measurement measurements[],
   int count,
   float signal,
-  const String& floatState,
   const String& deviceId,
   const String& secret
 );
