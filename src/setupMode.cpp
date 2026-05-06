@@ -33,13 +33,14 @@ void handleSetup() {
   const char* secret = doc["secret"];
   const char* ssid = doc["ssid"];
   const char* password = doc["password"];
+  const int interval = doc["interval"];
 
-  if (!deviceId || !secret || !ssid || !password) {
+  if (!deviceId || !secret || !ssid || !password || !interval) {
     server.send(400, "application/json", "{\"error\":\"Missing fields\"}");
     return;
   }
 
-  saveCredentials(String(deviceId), String(secret));
+  saveCredentials(String(deviceId), String(secret), interval);
   saveWifi(String(ssid), String(password));
 
   server.send(200, "application/json", "{\"status\":\"ok\"}");

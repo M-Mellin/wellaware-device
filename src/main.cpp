@@ -21,6 +21,8 @@ String wifiPassword;
 
 String deviceId;
 String deviceSecret;
+int deviceInterval = 3000;
+
 String jwtToken;
 unsigned long tokenExpiry = 0;
 
@@ -38,7 +40,7 @@ int measurementCount = 0;
 void setup() {
   Serial.begin(115200);
 
-  bool hasCredentials = loadCredentials(deviceId, deviceSecret);
+  bool hasCredentials = loadCredentials(deviceId, deviceSecret, deviceInterval);
   bool hasWifi = loadWifi(wifiSsid, wifiPassword);
 
   if (!hasCredentials || !hasWifi) {
@@ -103,5 +105,6 @@ void loop() {
       }
     }
   }
-  delay(3000);
+
+  delay(deviceInterval);
 }
