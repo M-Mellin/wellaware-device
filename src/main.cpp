@@ -11,6 +11,7 @@
 #include <esp_system.h>
 #include "credentials.h"
 #include "setupMode.h"
+#include "fetchToken.h"
 
 const int FLOAT_PIN = A1;
 const int ECHO_PIN = 4;
@@ -92,7 +93,8 @@ void loop() {
       measurementCount,
       signal,
       floatState,
-      deviceId
+      deviceId,
+      jwtToken
     );
 
     if (success) {
@@ -100,6 +102,11 @@ void loop() {
       Serial.println("SUCCESS: Measurements have been sent.");
     } else {
       Serial.println("Send failed. Local data is kept.");
+      jwtToken = fetchToken(deviceId, deviceSecret);
+
+      if (jwtToken.isEmpty()) {
+        Serial.println("Token invalid or service unavailable");
+      }
     }
   }
   delay(3000);
