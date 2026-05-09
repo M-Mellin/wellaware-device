@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-bool connectWifi(const char* ssid, const char* password) {
+bool connectWifi(String ssid, String password) {
   WiFi.begin(ssid, password);
 
   if (WiFi.status() != WL_CONNECTED) {
