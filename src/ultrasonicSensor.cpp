@@ -23,5 +23,5 @@ float readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
     Serial.println(" mm");
   }
 
-  return distance * 10;
+  return round(distance * 10);
 }

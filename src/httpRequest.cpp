@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "httpRequest.h"
 
-bool sendMessage(Measurement measurements[], int count, float signal, const String& floatState, const String& deviceId) {
+bool sendMessage(Measurement measurements[], int count, float signal, const String& deviceId, const String& token) {
 
   if (count == 0) {
     Serial.println("No measurments to send.");
@@ -21,11 +21,11 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
   http.begin(client, "https://mellin.net/wellaware/api/v1/measurements");
 
   http.addHeader("Content-Type", "application/json");
-
+  http.addHeader("Authorization", "Bearer " + token);
+  
   String json = "{";
   json += "\"deviceId\":\"" + deviceId + "\",";
   json += "\"signal\":" + String(signal) + ",";
-  json += "\"floatState\":\"" + floatState + "\",";
   json += "\"data\":[";
 
   for (int i = 0; i < count; i++) {

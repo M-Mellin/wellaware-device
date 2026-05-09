@@ -1,3 +1,3 @@
 #pragma once
 
-bool connectWifi(const char* ssid, const char* password);
+bool connectWifi(String ssid, String password);
