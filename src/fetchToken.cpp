@@ -13,7 +13,7 @@ String fetchToken(String deviceId, String secret) {
   http.setTimeout(5000);
   http.setReuse(false);
 
-  http.begin(client, "https://mellin.net/wellaware/api/v1/device/auth");
+  http.begin(client, "https://mellin.net/wellaware/api/v1/devices/auth");
 
   http.addHeader("Content-Type", "application/json");
 
