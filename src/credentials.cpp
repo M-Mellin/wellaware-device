@@ -1,20 +1,31 @@
 #include <Preferences.h>
 
 Preferences prefs;
-void saveCredentials(String id, String secret, int interval) {
+void saveCredentials(String id, String secret) {
   prefs.begin("device", false);
   prefs.putString("id", id);
   prefs.putString("secret", secret);
-  prefs.putInt("interval", interval);
   prefs.end();
 }
 
-bool loadCredentials(String &id, String &secret, int interval) {
+void saveInterval(int interval) {
+  prefs.begin("device", false);
+  prefs.putInt("inteval", interval);
+  prefs.end();
+}
+
+void loadInterval(int interval) {
+  prefs.begin("device", true);
+
+  interval = prefs.getInt("interval");
+  prefs.end();
+}
+
+bool loadCredentials(String &id, String &secret) {
   prefs.begin("device", true);
 
   id = prefs.getString("id", "");
   secret = prefs.getString("secret", "");
-  interval = prefs.getInt("interval");
 
   prefs.end();
 
