@@ -25,7 +25,6 @@ String deviceSecret;
 int deviceInterval = 3000;
 
 String jwtToken;
-unsigned long tokenExpiry = 0;
 
 unsigned long lastTokenRefresh = 0;
 
@@ -38,7 +37,6 @@ const long gmtOffset_sec = 0;
 const int daylightOffset_sec = 0;
 
 bool timeInitialized = false;
-bool shouldEnterSetupMode = false;
 
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
@@ -97,15 +95,17 @@ void handleMeasurementUploads() {
 }
 
 void handleCommands() {
+
   if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
     return;
   }
 
-  shouldEnterSetupMode = checkForCommands(deviceId, jwtToken);
-}
+  bool shouldEnterSetupMode = checkForCommands(deviceId, jwtToken);
 
-void handleSetupMode() {
+  loadInterval(deviceInterval);
+
   if (shouldEnterSetupMode) {
+
     Serial.println("Entering setup mode...");
 
     startSetupMode();
@@ -114,7 +114,7 @@ void handleSetupMode() {
 
 void setup() {
   Serial.begin(115200);
-  
+
   bool hasCredentials = loadCredentials(deviceId, deviceSecret);
   bool hasWifi = loadWifi(wifiSsid, wifiPassword);
 
@@ -161,8 +161,6 @@ void loop() {
   handleMeasurementUploads();
 
   handleCommands();
-
-  handleSetupMode();
 
   delay(deviceInterval);
 }

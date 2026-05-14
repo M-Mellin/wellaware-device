@@ -7,37 +7,102 @@
 #include "setupMode.h"
 #include "commands.h"
 
-bool handleCommand(JsonObject command) {
+CommandResult handleCommand(JsonObject command) {
   String type = command["type"];
 
   if (type == "setup_mode") {
     Serial.println("Starting Setup Mode");
 
-    return true;
-  } else if (type == "set_interval") {
-    int interval = command["payload"]["interval"];
+    return {
+      true,
+      false,
+      true
+    };
+  }
 
-    Serial.println("Changed sending interval to: " + String(interval));
+  else if (type == "set_interval") {
 
-    saveInterval(interval);
+    if (command["payload"]["interval"].isNull()) {
+      Serial.println("Invalid interval payload");
 
-    return false;
-  } else if (type == "update_wifi") {
+      return {
+        false,
+        false,
+        false
+      };
+    }
+
+    int interval =
+      command["payload"]["interval"].as<int>();
+
+    deviceInterval = interval * 1000;
+
+    Serial.println(
+      "Changed sending interval to: " +
+      String(interval)
+    );
+
+    saveInterval(deviceInterval);
+
+    return {
+      true,
+      false,
+      false
+    };
+  }
+
+  else if (type == "update_wifi") {
+
+    if (
+      !command["payload"]["ssid"].is<String>() ||
+      !command["payload"]["password"].is<String>()
+    ) {
+      Serial.println("Invalid WiFi payload");
+
+      return {
+        false,
+        false,
+        false
+      };
+    }
+
     String ssid = command["payload"]["ssid"];
     String password = command["payload"]["password"];
 
-    Serial.println("Update WiFi credentials");
+    Serial.println("Updating WiFi credentials");
+
     saveWifi(ssid, password);
 
-    ESP.restart();
-    return false;
+    return {
+      true,
+      true,
+      false
+    };
   }
 
-  return false;
+  else if (type == "restart") {
+
+    Serial.println("Restart command received");
+
+    return {
+      true,
+      true,
+      false
+    };
+  }
+
+  Serial.println("Unknown command type");
+
+  return {
+    false,
+    false,
+    false
+  };
 }
 
 bool checkForCommands(String deviceId, String token) {
   bool enterSetupMode = false;
+  bool shouldRestart = false;
 
   static WiFiClientSecure client;
   client.setInsecure();   
@@ -56,12 +121,13 @@ bool checkForCommands(String deviceId, String token) {
     String response = http.getString();
     Serial.println(response);
 
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(4096);
 
     DeserializationError error = deserializeJson(doc, response);
 
     if (error) {
       Serial.println("Failed to parse JSON");
+
       http.end();
       return false;
     }
@@ -70,21 +136,118 @@ bool checkForCommands(String deviceId, String token) {
 
     if (commands.size() == 0) {
       Serial.println("No pending commands");
+
       http.end();
       return false;
     }
 
     for (JsonObject command : commands) {
-      if (handleCommand(command)) {
+
+      String commandId = command["id"];
+
+      Serial.println(
+        "Processing command: " + commandId
+      );
+
+      bool processingAck = 
+        acknowledgeCommand(
+          deviceId,
+          token,
+          commandId,
+          "processing"
+        );
+
+      if (!processingAck) {
+        Serial.println(
+          "Failed to acknowledge processing state"
+        );
+      }
+
+      CommandResult result = handleCommand(command);
+
+      bool completedAck =
+        acknowledgeCommand(
+          deviceId,
+          token,
+          commandId,
+          result.success
+            ? "completed"
+            : "failed"
+        );
+
+      if (!completedAck) {
+        Serial.println(
+          "Failed to acknowledge completed state"
+        );
+      }
+
+      if (result.enterSetupMode) {
         enterSetupMode = true;
       }
-    } 
+
+      if (result.requiresRestart) {
+        shouldRestart = true;
+      }
+    }
 
   } else {
-    Serial.println("Failed to fetch commands");
+    Serial.println(
+      "Failed to fetch commands. HTTP code: " +
+      String(code)
+    );
   }
   
   http.end();
 
+  if (shouldRestart) {
+
+    Serial.println("Restarting device...");
+
+    delay(1000);
+
+    ESP.restart();
+  }
+
   return enterSetupMode;
+}
+
+bool acknowledgeCommand(
+  String deviceId,
+  String token,
+  String commandId,
+  String status
+) {
+
+  static WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+
+  http.setTimeout(5000);
+  http.setReuse(false);
+
+  String url =
+    "https://mellin.net/wellaware/api/v1/devices/" +
+    deviceId +
+    "/commands/" +
+    commandId +
+    "/ack";
+
+  http.begin(client, url);
+
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("Content-Type", "application/json");
+
+  DynamicJsonDocument doc(256);
+
+  doc["status"] = status;
+
+  String body;
+  serializeJson(doc, body);
+
+  int code = http.PATCH(body);
+
+  http.end();
+
+  return code == 204;
 }
