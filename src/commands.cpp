@@ -7,7 +7,7 @@
 #include "setupMode.h"
 #include "commands.h"
 
-CommandResult handleCommand(JsonObject command) {
+CommandResult handleCommand(JsonObject command, String deviceId, String token, String commandId) {
   String type = command["type"];
 
   if (type == "setup_mode") {
@@ -142,8 +142,8 @@ bool checkForCommands(String deviceId, String token) {
     }
 
     for (JsonObject command : commands) {
-
       String commandId = command["id"];
+      String type = command["type"];
 
       Serial.println(
         "Processing command: " + commandId
@@ -163,23 +163,24 @@ bool checkForCommands(String deviceId, String token) {
         );
       }
 
-      CommandResult result = handleCommand(command);
-
-      bool completedAck =
-        acknowledgeCommand(
-          deviceId,
-          token,
-          commandId,
-          result.success
-            ? "completed"
-            : "failed"
-        );
-
-      if (!completedAck) {
-        Serial.println(
-          "Failed to acknowledge completed state"
-        );
+      if (type == "remove_device") {
+        acknowledgeCommand(deviceId, token, commandId, "completed");
+        removeDeviceFromServer(deviceId, token, commandId);
+        
+        http.end();
+        clearAllData();
+        startSetupMode();
+        return false;
       }
+
+      CommandResult result = handleCommand(command, deviceId, token, commandId);
+
+      acknowledgeCommand(
+        deviceId,
+        token,
+        commandId,
+        result.success ? "completed" : "failed"
+      );
 
       if (result.enterSetupMode) {
         enterSetupMode = true;
@@ -247,6 +248,30 @@ bool acknowledgeCommand(
 
   int code = http.PATCH(body);
 
+  http.end();
+
+  return code == 204;
+}
+
+bool removeDeviceFromServer(String deviceId, String token, String commandId) {
+  static WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  http.setTimeout(5000);
+  http.setReuse(false);
+
+  String url =
+    "https://mellin.net/wellaware/api/v1/devices/" +
+    deviceId +
+    "?commandId=" +
+    commandId;
+
+  http.begin(client, url);
+  http.addHeader("Authorization", "Bearer " + token);
+  http.addHeader("Content-Type", "application/json");
+
+  int code = http.sendRequest("DELETE");
   http.end();
 
   return code == 204;

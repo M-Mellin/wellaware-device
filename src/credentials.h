@@ -8,4 +8,5 @@ void saveInterval(int interval);
 void loadInterval(int interval);
 void saveWifi(String ssid, String password);
 bool loadWifi(String &ssid, String &password);
+void clearAllData();
 #endif

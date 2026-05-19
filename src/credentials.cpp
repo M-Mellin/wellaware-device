@@ -50,5 +50,20 @@ bool loadWifi(String &ssid, String &password) {
   return ssid.length() > 0 && password.length() > 0;
 }
 
+void clearAllData() {
+  Preferences preferences;
+  preferences.begin("device", false);
+  preferences.clear();
+  preferences.end();
+
+  preferences.begin("wifi", false);
+  preferences.clear();
+  preferences.end();
+
+  preferences.begin("interval", false);
+  preferences.clear();
+  preferences.end();
+}
+
 
 
