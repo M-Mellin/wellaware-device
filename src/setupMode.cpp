@@ -35,12 +35,15 @@ void handleSetup() {
   const char* password = doc["password"];
   const int interval = doc["interval"];
 
-  if (!deviceId || !secret || !ssid || !password || !interval) {
+  if (!deviceId || !secret || !ssid || !password) {
     server.send(400, "application/json", "{\"error\":\"Missing fields\"}");
     return;
   }
 
-  saveCredentials(String(deviceId), String(secret), interval);
+  saveCredentials(String(deviceId), String(secret));
+
+  saveInterval(interval * 1000);
+
   saveWifi(String(ssid), String(password));
 
   server.send(200, "application/json", "{\"status\":\"ok\"}");
