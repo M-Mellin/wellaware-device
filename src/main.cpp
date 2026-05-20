@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <LittleFs.h>
 #include "floatSensor.h"
 #include "ultrasonicSensor.h"
 #include "wifiConnect.h"
@@ -117,6 +118,10 @@ void handleCommands() {
 void setup() {
   Serial.begin(115200);
 
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS mount failed!");
+  }
+
   bool hasCredentials = loadCredentials(deviceId, deviceSecret, provisionStatus);
   bool hasWifi = loadWifi(wifiSsid, wifiPassword);
 
@@ -126,6 +131,8 @@ void setup() {
   }
 
   loadInterval(deviceInterval);
+
+  loadMeasurementsFromFlash(pendingMeasurements, measurementCount, MAX_MEASUREMENTS);
 
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
