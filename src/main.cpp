@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <LittleFs.h>
+#include <LittleFS.h>
 #include "floatSensor.h"
 #include "ultrasonicSensor.h"
 #include "wifiConnect.h"
@@ -118,8 +118,16 @@ void handleCommands() {
 void setup() {
   Serial.begin(115200);
 
-  if (!LittleFS.begin(true)) {
-    Serial.println("LittleFS mount failed!");
+  if (!LittleFS.begin(false)) {
+    Serial.println("LittleFS mount failed, formatting...");
+    LittleFS.format();
+    if (!LittleFS.begin(false)) {
+      Serial.println("LittleFS still failed!");
+    } else {
+      Serial.println("LittleFS mounted after format.");
+    }
+  } else {
+    Serial.println("LittleFS mounted successfully.");
   }
 
   bool hasCredentials = loadCredentials(deviceId, deviceSecret, provisionStatus);
