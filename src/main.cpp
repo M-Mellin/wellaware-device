@@ -22,6 +22,8 @@ String wifiPassword;
 
 String deviceId;
 String deviceSecret;
+bool provisionStatus = false;
+
 int deviceInterval = 3000;
 
 String jwtToken;
@@ -115,7 +117,7 @@ void handleCommands() {
 void setup() {
   Serial.begin(115200);
 
-  bool hasCredentials = loadCredentials(deviceId, deviceSecret);
+  bool hasCredentials = loadCredentials(deviceId, deviceSecret, provisionStatus);
   bool hasWifi = loadWifi(wifiSsid, wifiPassword);
 
   if (!hasCredentials || !hasWifi) {
@@ -148,6 +150,27 @@ void setup() {
   jwtToken = fetchToken(deviceId, deviceSecret);
 
   lastTokenRefresh = millis();
+
+  if (!provisionStatus) {
+
+    int retries = 0;
+    bool success = false;
+
+    while (!success && retries < 10) {
+
+      success = setDeviceProvisioning(deviceId, jwtToken);
+
+      if (!success) {
+        retries++;
+        delay(5000);
+      }
+    }
+
+    if (success) {
+      saveCredentials(deviceId, deviceSecret, true);
+      provisionStatus = true;
+    }
+  }
 }
 
 void loop() {
