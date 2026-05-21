@@ -14,6 +14,7 @@
 #include "setupMode.h"
 #include "fetchToken.h"
 #include "commands.h"
+#include "ota.h"
 
 const int ECHO_PIN = 4;
 const int TRIG_PIN = 5;
@@ -43,6 +44,16 @@ bool timeInitialized = false;
 
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
+
+void checkForNewVersion() {
+  static unsigned long lastOtaCheck = 0;
+  const unsigned long OTA_CHECK_INTERVAL = 6UL * 60UL * 60UL * 1000UL;
+
+  if (millis() - lastOtaCheck >= OTA_CHECK_INTERVAL) {
+    lastOtaCheck = millis();
+    checkForOtaUpdate(deviceId, jwtToken);
+  }
+}
 
 void handleWifiConnection() {
 
@@ -164,6 +175,8 @@ void setup() {
   
   jwtToken = fetchToken(deviceId, deviceSecret);
 
+  checkForOtaUpdate(deviceId, jwtToken);
+
   lastTokenRefresh = millis();
 
   if (!provisionStatus) {
@@ -189,6 +202,7 @@ void setup() {
 }
 
 void loop() {
+  checkForNewVersion();
 
   handleWifiConnection();
 
