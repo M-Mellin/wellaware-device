@@ -2,11 +2,7 @@
 #define HTTP_REQUEST_H
 
 #include <Arduino.h>
-
-struct Measurement {
-  float level;
-  unsigned long timestamp;
-};
+#include "localData.h"
 
 bool sendMessage(
   Measurement measurements[],

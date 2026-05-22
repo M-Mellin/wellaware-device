@@ -1,31 +1,34 @@
 #include <Preferences.h>
 
 Preferences prefs;
-void saveCredentials(String id, String secret) {
+
+void saveCredentials(String id, String secret, bool provisionStatus) {
   prefs.begin("device", false);
   prefs.putString("id", id);
   prefs.putString("secret", secret);
+  prefs.putBool("provisioned", provisionStatus);
   prefs.end();
 }
 
 void saveInterval(int interval) {
   prefs.begin("device", false);
-  prefs.putInt("inteval", interval);
+  prefs.putInt("interval", interval);
   prefs.end();
 }
 
-void loadInterval(int interval) {
+void loadInterval(int &interval) {
   prefs.begin("device", true);
 
-  interval = prefs.getInt("interval");
+  interval = prefs.getInt("interval", 10000);
   prefs.end();
 }
 
-bool loadCredentials(String &id, String &secret) {
+bool loadCredentials(String &id, String &secret, bool &provisionStatus) {
   prefs.begin("device", true);
 
   id = prefs.getString("id", "");
   secret = prefs.getString("secret", "");
+  provisionStatus = prefs.getBool("provisioned", false);
 
   prefs.end();
 
@@ -51,18 +54,17 @@ bool loadWifi(String &ssid, String &password) {
 }
 
 void clearAllData() {
-  Preferences preferences;
-  preferences.begin("device", false);
-  preferences.clear();
-  preferences.end();
+  prefs.begin("device", false);
+  prefs.clear();
+  prefs.end();
 
-  preferences.begin("wifi", false);
-  preferences.clear();
-  preferences.end();
+  prefs.begin("wifi", false);
+  prefs.clear();
+  prefs.end();
 
-  preferences.begin("interval", false);
-  preferences.clear();
-  preferences.end();
+  prefs.begin("interval", false);
+  prefs.clear();
+  prefs.end();
 }
 
 

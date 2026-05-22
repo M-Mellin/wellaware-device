@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <LittleFS.h>
 #include "floatSensor.h"
 #include "ultrasonicSensor.h"
 #include "wifiConnect.h"
@@ -13,6 +14,7 @@
 #include "setupMode.h"
 #include "fetchToken.h"
 #include "commands.h"
+#include "ota.h"
 
 const int ECHO_PIN = 4;
 const int TRIG_PIN = 5;
@@ -22,6 +24,8 @@ String wifiPassword;
 
 String deviceId;
 String deviceSecret;
+bool provisionStatus = false;
+
 int deviceInterval = 3000;
 
 String jwtToken;
@@ -40,6 +44,16 @@ bool timeInitialized = false;
 
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
+
+void checkForNewVersion() {
+  static unsigned long lastOtaCheck = 0;
+  const unsigned long OTA_CHECK_INTERVAL = 6UL * 60UL * 60UL * 1000UL;
+
+  if (millis() - lastOtaCheck >= OTA_CHECK_INTERVAL) {
+    lastOtaCheck = millis();
+    checkForOtaUpdate(deviceId, jwtToken);
+  }
+}
 
 void handleWifiConnection() {
 
@@ -115,7 +129,19 @@ void handleCommands() {
 void setup() {
   Serial.begin(115200);
 
-  bool hasCredentials = loadCredentials(deviceId, deviceSecret);
+  if (!LittleFS.begin(false)) {
+    Serial.println("LittleFS mount failed, formatting...");
+    LittleFS.format();
+    if (!LittleFS.begin(false)) {
+      Serial.println("LittleFS still failed!");
+    } else {
+      Serial.println("LittleFS mounted after format.");
+    }
+  } else {
+    Serial.println("LittleFS mounted successfully.");
+  }
+
+  bool hasCredentials = loadCredentials(deviceId, deviceSecret, provisionStatus);
   bool hasWifi = loadWifi(wifiSsid, wifiPassword);
 
   if (!hasCredentials || !hasWifi) {
@@ -124,6 +150,8 @@ void setup() {
   }
 
   loadInterval(deviceInterval);
+
+  loadMeasurementsFromFlash(pendingMeasurements, measurementCount, MAX_MEASUREMENTS);
 
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
@@ -147,10 +175,34 @@ void setup() {
   
   jwtToken = fetchToken(deviceId, deviceSecret);
 
+  checkForOtaUpdate(deviceId, jwtToken);
+
   lastTokenRefresh = millis();
+
+  if (!provisionStatus) {
+
+    int retries = 0;
+    bool success = false;
+
+    while (!success && retries < 10) {
+
+      success = setDeviceProvisioning(deviceId, jwtToken);
+
+      if (!success) {
+        retries++;
+        delay(5000);
+      }
+    }
+
+    if (success) {
+      saveCredentials(deviceId, deviceSecret, true);
+      provisionStatus = true;
+    }
+  }
 }
 
 void loop() {
+  checkForNewVersion();
 
   handleWifiConnection();
 

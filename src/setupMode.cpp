@@ -2,8 +2,45 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include "credentials.h"
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include "fetchToken.h"
 
 WebServer server(80);
+
+bool setDeviceProvisioning(String deviceId, String token) {
+  static WiFiClientSecure client;
+  client.setInsecure();   
+
+  HTTPClient http;
+
+  http.setTimeout(5000);
+  http.setReuse(false);
+
+  http.begin(client, "https://mellin.net/wellaware/api/v1/devices/" + deviceId);
+
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + token);
+
+  int code = http.PATCH("{}");
+
+  Serial.print("HTTP code: ");
+  Serial.println(code);
+
+  bool success = false;
+
+  if (code == 204) {
+    success = true;
+    Serial.println("Upload successful.");
+  } else {
+    Serial.print("HTTP error: ");
+    Serial.println(http.errorToString(code));
+  }
+
+  http.end();
+
+  return success;
+}
 
 void handleSetup() {
   Serial.println("SETUP ENDPOINT HIT");
@@ -40,7 +77,7 @@ void handleSetup() {
     return;
   }
 
-  saveCredentials(String(deviceId), String(secret));
+  saveCredentials(String(deviceId), String(secret), false);
 
   saveInterval(interval * 1000);
 

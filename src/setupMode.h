@@ -5,5 +5,6 @@
 void handleSetup();
 
 bool startSetupMode();
+bool setDeviceProvisioning(String deviceId, String token);
 
 #endif

@@ -17,10 +17,13 @@ String fetchToken(String deviceId, String secret) {
 
   http.addHeader("Content-Type", "application/json");
 
-  String json = "{";
-  json += "\"deviceId\":\"" + deviceId + "\",";
-  json += "\"secret\":\"" + secret + "\"";
-  json += "}";
+  StaticJsonDocument<256> doc;
+
+  doc["deviceId"] = deviceId;
+  doc["secret"] = secret;
+
+  String json;
+  serializeJson(doc, json);
 
   int code = http.POST(json);
 
@@ -32,15 +35,21 @@ String fetchToken(String deviceId, String secret) {
 
   if (code == 200) {
     Serial.println("Token received");
-    JsonDocument doc;
+    StaticJsonDocument<256> doc;
 
-    deserializeJson(doc, response);
+    DeserializationError error = deserializeJson(doc, response);
+
+    if (error) {
+      Serial.println("Failed to parse token response");
+      return "";
+    }
 
     String token = doc["token"].as<String>();
 
     return token;
   } else {
     Serial.println(http.errorToString(code));
+    Serial.println(response);
     return "";
   }
 }
