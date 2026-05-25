@@ -139,7 +139,6 @@ void checkForOtaUpdate(const String& deviceId, const String& jwtToken) {
   }
 
   Serial.printf("[OTA] New version %s found, downloading...\n", latestVersion.c_str());
-
   if (performOta(firmwareUrl, jwtToken)) {
     saveVersion(latestVersion);
     Serial.println("[OTA] Update complete, restarting...");

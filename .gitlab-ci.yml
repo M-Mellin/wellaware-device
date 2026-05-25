@@ -24,33 +24,9 @@ release-firmware:
   image: alpine:latest
   needs: [build-firmware]
   script:
-    - apk add --no-cache curl jq
+    - apk add --no-cache curl jq coreutils
     - SHA=$(sha256sum $BIN_PATH | awk '{print $1}')
-    
-    - |
-      curl -X POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/uploads" \
-        -H "PRIVATE-TOKEN: $GITLAB_RELEASE_TOKEN" \
-        -F "file=@$BIN_PATH" \
-        -o upload.json
-    
-    - FULL_URL="https://gitlab.lnu.se$(jq -r '.full_path' upload.json)"
-    
-    - |
-      curl -X POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
-        -H "PRIVATE-TOKEN: $GITLAB_RELEASE_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{
-          \"name\": \"Release $CI_COMMIT_TAG\",
-          \"tag_name\": \"$CI_COMMIT_TAG\",
-          \"description\": \"Firmware $CI_COMMIT_TAG\",
-          \"assets\": {
-            \"links\": [{
-              \"name\": \"firmware.bin\",
-              \"url\": \"$FULL_URL\"
-            }]
-          }
-        }" || true
-    
+    - BINARY=$(base64 -w 0 $BIN_PATH)
     - |
       curl -X POST "https://mellin.net/wellaware/api/v1/ota/release" \
         -H "Content-Type: application/json" \
@@ -58,7 +34,7 @@ release-firmware:
         -d "{
           \"version\": \"$CI_COMMIT_TAG\",
           \"sha256\": \"$SHA\",
-          \"url\": \"$FULL_URL\"
+          \"binary\": \"$BINARY\"
         }"
   rules:
     - if: $CI_COMMIT_TAG =~ /^v.*/
