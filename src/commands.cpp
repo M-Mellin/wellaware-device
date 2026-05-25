@@ -92,7 +92,7 @@ bool checkForCommands(String deviceId, String token) {
   if (res.code == 200) {
     Serial.println(res.body);
 
-    DynamicJsonDocument doc(4096);
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, res.body);
 
     if (error) {
@@ -164,7 +164,7 @@ bool checkForCommands(String deviceId, String token) {
 bool acknowledgeCommand(String deviceId, String token, String commandId, String status) {
   ApiClient client;
 
-  DynamicJsonDocument doc(256);
+  JsonDocument doc;
   doc["status"] = status;
   String body;
   serializeJson(doc, body);

@@ -24,7 +24,7 @@
 String fetchToken(String deviceId, String secret) {
   ApiClient client;
 
-  StaticJsonDocument<256> doc;
+  JsonDocument doc;
   doc["deviceId"] = deviceId;
   doc["secret"] = secret;
   String body;
@@ -37,7 +37,7 @@ String fetchToken(String deviceId, String secret) {
   if (res.code == 200) {
     Serial.println("Token received");
 
-    StaticJsonDocument<256> resDoc;
+    JsonDocument resDoc;
     DeserializationError error = deserializeJson(resDoc, res.body);
 
     if (error) {
