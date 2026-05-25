@@ -58,7 +58,7 @@ void handleSetup() {
     return;
   }
 
-  StaticJsonDocument<512> doc;
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, body);
 
   if (error) {
