@@ -179,6 +179,14 @@ void setup() {
 
   connectWifi(wifiSsid, wifiPassword);
 
+  unsigned long wifiStart = millis();
+
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 10000) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
       timeInitialized = syncTime();
@@ -196,7 +204,11 @@ void setup() {
   
   jwtToken = fetchToken(deviceId, deviceSecret);
 
-  checkForOtaUpdate(deviceId, jwtToken);
+  if (jwtToken.isEmpty()) {
+    Serial.println("Failed to fetch token, skipping OTA check");
+  } else {
+    checkForOtaUpdate(deviceId, jwtToken);
+  }
 
   lastTokenRefresh = millis();
 
