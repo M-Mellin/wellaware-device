@@ -13,7 +13,7 @@ build-firmware:
     - pip install platformio
     - ROOT_CA=$(echo "$ROOT_CA_CERT" | base64 -d)
     - |
-      cat > config.h << EOF
+      cat > $CI_PROJECT_DIR/config.h << EOF
       #pragma once
       #define API_BASE_URL "$API_BASE_URL"
       #define API_TIMEOUT_MS 5000
