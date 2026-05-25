@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <LittleFS.h>
-#include "floatSensor.h"
 #include "ultrasonicSensor.h"
 #include "wifiConnect.h"
 #include "httpRequest.h"
@@ -15,9 +14,7 @@
 #include "fetchToken.h"
 #include "commands.h"
 #include "ota.h"
-
-const int ECHO_PIN = 4;
-const int TRIG_PIN = 5;
+#include "../config.h"
 
 String wifiSsid;
 String wifiPassword;
@@ -32,10 +29,6 @@ String jwtToken;
 
 unsigned long lastTokenRefresh = 0;
 
-const unsigned long TOKEN_REFRESH_INTERVAL = 3600000;
-
-const int MAX_MEASUREMENTS = 500;
-
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;
 const int daylightOffset_sec = 0;
@@ -47,7 +40,6 @@ int measurementCount = 0;
 
 void checkForNewVersion() {
   static unsigned long lastOtaCheck = 0;
-  const unsigned long OTA_CHECK_INTERVAL = 6UL * 60UL * 60UL * 1000UL;
 
   if (millis() - lastOtaCheck >= OTA_CHECK_INTERVAL) {
     lastOtaCheck = millis();
@@ -160,7 +152,7 @@ void setup() {
 
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
-      timeInitialized = syncTime(ntpServer, gmtOffset_sec, daylightOffset_sec);
+      timeInitialized = syncTime(NTP_SERVER, GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC);
     }
 
     if (!timeInitialized) {

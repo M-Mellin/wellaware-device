@@ -1,16 +1,36 @@
 #pragma once
 
 // Server
-#define API_BASE_URL "https://mellin.net/wellaware/api/v1"
+#define API_BASE_URL "https://your-domain.net/"
 #define API_TIMEOUT_MS 5000
 
-// Setup mode
-#define SETUP_AP_SSID "WellAware-Device-Setup"
+// Setup Mode
+#define SETUP_AP_SSID "Device-Setup"
 #define SETUP_TIMEOUT_MS 30000
 
-// Retrived with: openssl s_client -connect dittdomän.se:443 </dev/null 2>/dev/null | openssl x509 -outform PEM
+// Local Data
+#define FLASH_SAVE_INTERVAL 15 * 60 * 1000
+#define MEASUREMENTS_FILE "/measurements.bin"
+#define MAX_MEASUREMENTS 500
+
+// Pin setup for ultrasonic sensor
+#define ECHO_PIN 4
+#define TRIG_PIN 5
+
+// Token refresh interval
+#define TOKEN_REFRESH_INTERVAL 3600000
+
+// Over-The-Air check for updates interval
+#define OTA_CHECK_INTERVAL 6UL * 60UL * 60UL * 1000UL
+
+// NTP Server polling
+#define NTP_SERVER "pool.ntp.rog"
+#define GMT_OFFSET_SEC 0
+#define DAYLIGHT_OFFSET_SEC 0
+
+// Server Certificate
 static const char ROOT_CA_CERT[] = R"(
 -----BEGIN CERTIFICATE-----
-CERTIFIKAT
+CERTIFICATE
 -----END CERTIFICATE-----
 )";

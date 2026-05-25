@@ -3,9 +3,6 @@
 #include <WiFi.h>
 #include "localData.h"
 
-#define MEASUREMENTS_FILE "/measurements.bin"
-
-const unsigned long FLASH_SAVE_INTERVAL = 15 * 60 * 1000; // Every 15:th minute
 static unsigned long lastFlashSave = 0;
 
 void addMeasurement(Measurement pendingMeasurements[], float level, unsigned long timestamp, int& measurementCount, int MAX_MEASUREMENTS) {
