@@ -1,9 +1,24 @@
+/**
+ * @file ultrasonicSensor.cpp
+ * @brief Ultrasonic distance sensor driver with median filtering.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <Arduino.h>
 #include "ultrasonicSensor.h"
 
-#define MEDIAN_SAMPLES 12
-
-float takeSingleMeasurement(int ECHO_PIN, int TRIG_PIN) {
+/**
+ * @brief Takes a single distance measurement from the ultrasonic sensor.
+ *
+ * Sends a trigger pulse and measures the echo duration to calculate distance.
+ *
+ * @param ECHO_PIN  GPIO pin connected to the sensor echo output.
+ * @param TRIG_PIN  GPIO pin connected to the sensor trigger input.
+ * @return Distance in centimeters, or -1 if no echo was received.
+ */
+float takeSingleMeasurement() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
@@ -17,15 +32,25 @@ float takeSingleMeasurement(int ECHO_PIN, int TRIG_PIN) {
   return duration * 0.0343 / 2;
 }
 
-float readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
+/**
+ * @brief Reads the ultrasonic sensor using median filtering over multiple samples.
+ *
+ * Takes MEDIAN_SAMPLES measurements, discards invalid ones, sorts the valid
+ * results, and returns the median value in millimeters.
+ *
+ * @param ECHO_PIN  GPIO pin connected to the sensor echo output.
+ * @param TRIG_PIN  GPIO pin connected to the sensor trigger input.
+ * @return Median distance in millimeters, or 0 if no valid samples were received.
+ */
+float readUltrasonicSensor() {
   float samples[MEDIAN_SAMPLES];
   int validCount = 0;
 
   for (int i = 0; i < MEDIAN_SAMPLES; i++) {
-    float sample = takeSingleMeasurement(ECHO_PIN, TRIG_PIN);
+    float sample = takeSingleMeasurement();
 
     if (sample != -1) {
-      samples[validCount ++] = sample;
+      samples[validCount++] = sample;
     }
 
     delayMicroseconds(30000);
@@ -45,7 +70,7 @@ float readUltrasonicSensor(int ECHO_PIN, int TRIG_PIN) {
       }
     }
   }
-  
+
   for (int i = 0; i < validCount; i++) {
     Serial.println(samples[i]);
   }
