@@ -9,6 +9,8 @@
 #ifndef SYNC_TIME_H
 #define SYNC_TIME_H
 
+#include "../config.h"
+
 /**
  * @brief Synchronizes the device clock with an NTP server.
  *
@@ -20,6 +22,6 @@
  * @param daylightOffset_sec Daylight saving time offset in seconds (e.g. 3600).
  * @return true if time was synchronized successfully, false otherwise.
  */
-bool syncTime(const char* ntpServer, const long gmtOffset_sec, const long daylightOffset_sec);
+bool syncTime();
 
 #endif

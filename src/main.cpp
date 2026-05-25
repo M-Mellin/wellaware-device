@@ -40,10 +40,6 @@ String jwtToken;
 
 unsigned long lastTokenRefresh = 0;
 
-const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;
-const int daylightOffset_sec = 0;
-
 bool timeInitialized = false;
 
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
@@ -160,14 +156,8 @@ void handleCommands() {
 void setup() {
   Serial.begin(115200);
 
-  if (!LittleFS.begin(false)) {
-    Serial.println("LittleFS mount failed, formatting...");
-    LittleFS.format();
-    if (!LittleFS.begin(false)) {
-      Serial.println("LittleFS still failed!");
-    } else {
-      Serial.println("LittleFS mounted after format.");
-    }
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS failed to mount!");
   } else {
     Serial.println("LittleFS mounted successfully.");
   }
@@ -191,7 +181,7 @@ void setup() {
 
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
-      timeInitialized = syncTime(NTP_SERVER, GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC);
+      timeInitialized = syncTime();
     }
 
     if (!timeInitialized) {

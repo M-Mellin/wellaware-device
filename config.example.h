@@ -24,7 +24,7 @@
 #define OTA_CHECK_INTERVAL 6UL * 60UL * 60UL * 1000UL
 
 // NTP Server polling
-#define NTP_SERVER "pool.ntp.rog"
+#define NTP_SERVER "pool.ntp.org"
 #define GMT_OFFSET_SEC 0
 #define DAYLIGHT_OFFSET_SEC 0
 
