@@ -1,3 +1,14 @@
+/**
+ * @file main.cpp
+ * @brief Main entry point for the WellAware device firmware.
+ *
+ * Handles device initialization, WiFi connectivity, sensor measurements,
+ * data uploads, command processing, and OTA updates.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <LittleFS.h>
@@ -38,6 +49,11 @@ bool timeInitialized = false;
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
 
+/**
+ * @brief Checks for a new OTA firmware version at a fixed interval.
+ *
+ * Only triggers a check every OTA_CHECK_INTERVAL milliseconds.
+ */
 void checkForNewVersion() {
   static unsigned long lastOtaCheck = 0;
 
@@ -47,6 +63,9 @@ void checkForNewVersion() {
   }
 }
 
+/**
+ * @brief Reconnects to WiFi if the connection has been lost.
+ */
 void handleWifiConnection() {
 
   if (WiFi.status() != WL_CONNECTED) {
@@ -57,6 +76,9 @@ void handleWifiConnection() {
   }
 }
 
+/**
+ * @brief Refreshes the JWT token if it is empty or has expired.
+ */
 void refreshTokenIfNeeded() {
   if (jwtToken.isEmpty() || millis() - lastTokenRefresh > TOKEN_REFRESH_INTERVAL) {
     Serial.println("Refreshing JWT token...");
@@ -72,14 +94,22 @@ void refreshTokenIfNeeded() {
   }
 }
 
+/**
+ * @brief Reads the ultrasonic sensor and adds the measurement to the buffer.
+ */
 void handleMeasurements() {
-  float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
+  float distance = readUltrasonicSensor();
 
   unsigned long unixTimestamp = time(nullptr);
 
   addMeasurement(pendingMeasurements, distance, unixTimestamp, measurementCount, MAX_MEASUREMENTS);
 }
 
+/**
+ * @brief Uploads pending measurements to the server if WiFi and token are available.
+ *
+ * Clears the local buffer on success.
+ */
 void handleMeasurementUploads() {
   if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
     return;
@@ -94,12 +124,17 @@ void handleMeasurementUploads() {
   if (success) {
     clearMeasurements(measurementCount);
 
-    Serial.println("SUCESS: Measurements have been sent.");
+    Serial.println("SUCCESS: Measurements have been sent.");
   } else {
     Serial.println("FAILED: Send failed, local data is kept.");
   }
 }
 
+/**
+ * @brief Fetches and processes pending commands from the server.
+ *
+ * Enters setup mode if the server requests it.
+ */
 void handleCommands() {
 
   if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
@@ -118,6 +153,10 @@ void handleCommands() {
   }
 }
 
+/**
+ * @brief Initializes the device, loads credentials, connects to WiFi,
+ *        syncs time, fetches a JWT token, and provisions the device if needed.
+ */
 void setup() {
   Serial.begin(115200);
 
@@ -156,7 +195,7 @@ void setup() {
     }
 
     if (!timeInitialized) {
-      Serial.println("Watiing for valid time...");
+      Serial.println("Waiting for valid time...");
       delay(5000);
 
       if (WiFi.status() != WL_CONNECTED) {
@@ -193,6 +232,10 @@ void setup() {
   }
 }
 
+/**
+ * @brief Main loop. Runs continuously to handle connectivity,
+ *        measurements, uploads, commands, and OTA checks.
+ */
 void loop() {
   checkForNewVersion();
 
