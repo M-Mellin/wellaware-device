@@ -45,10 +45,11 @@ static void saveVersion(const String& version) {
  * Uses a secure HTTPS connection with TLS certificate validation.
  * Aborts the update if the download is incomplete or finalization fails.
  *
- * @param url  Full HTTPS URL to the firmware binary.
+ * @param url Full HTTPS URL to the firmware binary.
+ * @param token  JWT token for authentication.
  * @return true if the firmware was written successfully, false otherwise.
  */
-static bool performOta(const String& url) {
+static bool performOta(const String& url, const String& token) {
   WiFiClientSecure client;
   client.setCACert(ROOT_CA_CERT);
 
@@ -56,6 +57,7 @@ static bool performOta(const String& url) {
   http.begin(client, url);
   http.setTimeout(30000);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.addHeader("Authorization", "Bearer " + token);
 
   int httpCode = http.GET();
 
@@ -138,7 +140,7 @@ void checkForOtaUpdate(const String& deviceId, const String& jwtToken) {
 
   Serial.printf("[OTA] New version %s found, downloading...\n", latestVersion.c_str());
 
-  if (performOta(firmwareUrl)) {
+  if (performOta(firmwareUrl, jwtToken)) {
     saveVersion(latestVersion);
     Serial.println("[OTA] Update complete, restarting...");
     delay(500);
