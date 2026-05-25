@@ -1,11 +1,11 @@
 #pragma once
 
 // Server
-#define API_BASE_URL "https://your-domain.net/"
+#define API_BASE_URL "https://your-domain.net"
 #define API_TIMEOUT_MS 5000
 
 // Setup Mode
-#define SETUP_AP_SSID "Device-Setup"
+#define SETUP_AP_SSID "WellAware-Device-Setup"
 #define SETUP_TIMEOUT_MS 30000
 
 // Local Data
@@ -13,9 +13,10 @@
 #define MEASUREMENTS_FILE "/measurements.bin"
 #define MAX_MEASUREMENTS 500
 
-// Pin setup for ultrasonic sensor
+// Ultrasonic setup
 #define ECHO_PIN 4
 #define TRIG_PIN 5
+#define MEDIAN_SAMPLES 12
 
 // Token refresh interval
 #define TOKEN_REFRESH_INTERVAL 3600000

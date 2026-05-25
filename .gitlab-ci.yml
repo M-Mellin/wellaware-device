@@ -11,6 +11,18 @@ build-firmware:
   image: python:3.11
   script:
     - pip install platformio
+    - ROOT_CA=$(echo "$ROOT_CA_CERT" | base64 -d)
+    - |
+      cat > config.h << EOF
+      #pragma once
+      #define API_BASE_URL "$API_BASE_URL"
+      #define API_TIMEOUT_MS 5000
+      #define SETUP_AP_SSID "WellAware-Device-Setup"
+      #define SETUP_TIMEOUT_MS 30000
+      #define FLASH_SAVE_INTERVAL 15 * 60 * 1000
+      #define MEASUREMENTS_FILE "/measurements.bin"
+      static const char ROOT_CA_CERT[] = R"($ROOT_CA)";
+      EOF
     - pio run -e $ENV_NAME --disable-auto-clean
   artifacts:
     paths:
@@ -24,11 +36,11 @@ release-firmware:
   image: alpine:latest
   needs: [build-firmware]
   script:
-    - apk add --no-cache curl jq coreutils
+    - apk add --no-cache curl coreutils
     - SHA=$(sha256sum $BIN_PATH | awk '{print $1}')
     - BINARY=$(base64 -w 0 $BIN_PATH)
     - |
-      curl -X POST "https://mellin.net/wellaware/api/v1/ota/release" \
+      curl -X POST "$API_BASE_URL/ota/release" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $OTA_ADMIN_SECRET" \
         -d "{
