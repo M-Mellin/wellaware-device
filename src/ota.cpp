@@ -1,3 +1,11 @@
+/**
+ * @file ota.cpp
+ * @brief Over-the-air firmware update management for the WellAware device.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include "ota.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -6,6 +14,11 @@
 #include <Preferences.h>
 #include "apiClient.h"
 
+/**
+ * @brief Retrieves the currently installed firmware version from persistent storage.
+ *
+ * @return String containing the saved version, or empty string if not set.
+ */
 static String getSavedVersion() {
   Preferences prefs;
   prefs.begin("ota", true);
@@ -14,6 +27,11 @@ static String getSavedVersion() {
   return version;
 }
 
+/**
+ * @brief Saves the installed firmware version to persistent storage.
+ *
+ * @param version The version string to save.
+ */
 static void saveVersion(const String& version) {
   Preferences prefs;
   prefs.begin("ota", false);
@@ -21,6 +39,15 @@ static void saveVersion(const String& version) {
   prefs.end();
 }
 
+/**
+ * @brief Downloads and installs a firmware binary from the given URL.
+ *
+ * Uses a secure HTTPS connection with TLS certificate validation.
+ * Aborts the update if the download is incomplete or finalization fails.
+ *
+ * @param url  Full HTTPS URL to the firmware binary.
+ * @return true if the firmware was written successfully, false otherwise.
+ */
 static bool performOta(const String& url) {
   WiFiClientSecure client;
   client.setCACert(ROOT_CA_CERT);
@@ -70,6 +97,15 @@ static bool performOta(const String& url) {
   return true;
 }
 
+/**
+ * @brief Checks the server for a newer firmware version and performs OTA if available.
+ *
+ * Compares the latest version from the server against the locally saved version.
+ * Downloads and installs the update if a newer version is found, then restarts.
+ *
+ * @param deviceId  The unique device identifier.
+ * @param jwtToken  JWT token for authentication.
+ */
 void checkForOtaUpdate(const String& deviceId, const String& jwtToken) {
   Serial.println("[OTA] Checking for update...");
 
