@@ -2,6 +2,7 @@
 #define COMMANDS_H
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "../config.h"
 
 struct CommandResult {
   bool success;

@@ -8,7 +8,7 @@ bool syncTime(const char* ntpServer, const long gmtOffset_sec, const long daylig
   struct tm timeinfo;
 
   if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obatin time");
+    Serial.println("Failed to obtain time");
     return false;
   }
 

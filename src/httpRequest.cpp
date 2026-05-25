@@ -1,66 +1,42 @@
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 #include <Arduino.h>
 #include "httpRequest.h"
+#include "apiClient.h"
 
 bool sendMessage(Measurement measurements[], int count, float signal, const String& deviceId, const String& token) {
-
   if (count == 0) {
-    Serial.println("No measurments to send.");
+    Serial.println("No measurements to send.");
     return true;
   }
 
-  static WiFiClientSecure client;
-  client.setInsecure();   
+  DynamicJsonDocument doc(4096);
+  doc["deviceId"] = deviceId;
+  doc["signal"] = signal;
 
-  HTTPClient http;
-
-  http.setTimeout(5000);
-  http.setReuse(false);
-
-  http.begin(client, "https://mellin.net/wellaware/api/v1/measurements");
-
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + token);
-  
-  String json = "{";
-  json += "\"deviceId\":\"" + deviceId + "\",";
-  json += "\"signal\":" + String(signal) + ",";
-  json += "\"data\":[";
-
+  JsonArray data = doc.createNestedArray("data");
   for (int i = 0; i < count; i++) {
-    json += "{";
-    json += "\"level\":" + String(measurements[i].level) + ",";
-    json += "\"timestamp\":\"" + String(measurements[i].timestamp) + "\"";
-    json += "}";
-
-    if (i < count - 1) {
-      json += ",";
-    }
+    JsonObject entry = data.createNestedObject();
+    entry["level"] = measurements[i].level;
+    entry["timestamp"] = measurements[i].timestamp;
   }
 
-  json += "]";
-  json += "}";
+  String body;
+  serializeJson(doc, body);
 
   Serial.println("Sending JSON:");
-  Serial.println(json);
+  Serial.println(body);
 
-  int code = http.POST(json);
+  ApiClient client;
+  ApiResponse res = client.post(String(API_BASE_URL) + "/measurements", body, token);
 
   Serial.print("HTTP code: ");
-  Serial.println(code);
+  Serial.println(res.code);
 
-  bool success = false;
-
-  if (code == 204 || code == 200) {
-    success = true;
+  if (res.code == 200 || res.code == 204) {
     Serial.println("Upload successful.");
-  } else {
-    Serial.print("HTTP error: ");
-    Serial.println(http.errorToString(code));
+    return true;
   }
 
-  http.end();
-
-  return success;
+  Serial.println("HTTP error: " + String(res.code));
+  return false;
 }

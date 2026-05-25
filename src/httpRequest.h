@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "localData.h"
+#include "../config.h"
 
 bool sendMessage(
   Measurement measurements[],

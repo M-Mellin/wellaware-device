@@ -1,10 +1,10 @@
 #include "ota.h"
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <Update.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
-
-const char* OTA_VERSION_URL = "https://mellin.net/wellaware/api/v1/ota/version";
+#include "apiClient.h"
 
 static String getSavedVersion() {
   Preferences prefs;
@@ -22,8 +22,11 @@ static void saveVersion(const String& version) {
 }
 
 static bool performOta(const String& url) {
+  WiFiClientSecure client;
+  client.setCACert(ROOT_CA_CERT);
+
   HTTPClient http;
-  http.begin(url);
+  http.begin(client, url);
   http.setTimeout(30000);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
@@ -53,7 +56,7 @@ static bool performOta(const String& url) {
   size_t written = Update.writeStream(*stream);
   http.end();
 
-  if (written != contentLength) {
+  if (written != (size_t)contentLength) {
     Serial.printf("[OTA] Written %d of %d bytes\n", written, contentLength);
     Update.abort();
     return false;
@@ -70,22 +73,16 @@ static bool performOta(const String& url) {
 void checkForOtaUpdate(const String& deviceId, const String& jwtToken) {
   Serial.println("[OTA] Checking for update...");
 
-  HTTPClient http;
-  http.begin(OTA_VERSION_URL);
-  http.addHeader("Authorization", "Bearer " + jwtToken);
-  http.setTimeout(10000);
+  ApiClient client;
+  ApiResponse res = client.get(String(API_BASE_URL) + "/ota/version", jwtToken);
 
-  int httpCode = http.GET();
-
-  if (httpCode != HTTP_CODE_OK) {
-    Serial.printf("[OTA] Version check failed, HTTP %d\n", httpCode);
-    http.end();
+  if (res.code != 200) {
+    Serial.printf("[OTA] Version check failed, HTTP %d\n", res.code);
     return;
   }
 
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getString());
-  http.end();
+  DeserializationError err = deserializeJson(doc, res.body);
 
   if (err) {
     Serial.println("[OTA] JSON parse error");

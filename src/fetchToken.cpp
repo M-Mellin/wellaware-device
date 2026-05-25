@@ -1,55 +1,35 @@
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Arduino.h>
+#include "fetchToken.h"
+#include "apiClient.h"
 
 String fetchToken(String deviceId, String secret) {
-  static WiFiClientSecure client;
-
-  client.setInsecure();
-
-  HTTPClient http;
-
-  http.setTimeout(5000);
-  http.setReuse(false);
-
-  http.begin(client, "https://mellin.net/wellaware/api/v1/devices/auth");
-
-  http.addHeader("Content-Type", "application/json");
+  ApiClient client;
 
   StaticJsonDocument<256> doc;
-
   doc["deviceId"] = deviceId;
   doc["secret"] = secret;
+  String body;
+  serializeJson(doc, body);
 
-  String json;
-  serializeJson(doc, json);
+  ApiResponse res = client.post(String(API_BASE_URL) + "/devices/auth", body);
 
-  int code = http.POST(json);
+  Serial.println(res.code);
 
-  String response = http.getString();
-
-  Serial.println(code);
-
-  http.end();
-
-  if (code == 200) {
+  if (res.code == 200) {
     Serial.println("Token received");
-    StaticJsonDocument<256> doc;
 
-    DeserializationError error = deserializeJson(doc, response);
+    StaticJsonDocument<256> resDoc;
+    DeserializationError error = deserializeJson(resDoc, res.body);
 
     if (error) {
       Serial.println("Failed to parse token response");
       return "";
     }
 
-    String token = doc["token"].as<String>();
-
-    return token;
-  } else {
-    Serial.println(http.errorToString(code));
-    Serial.println(response);
-    return "";
+    return resDoc["token"].as<String>();
   }
+
+  Serial.println("fetchToken failed: " + String(res.code));
+  return "";
 }
