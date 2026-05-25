@@ -1,3 +1,11 @@
+/**
+ * @file setupMode.cpp
+ * @brief Handles device setup mode, provisioning, and the local HTTP configuration server.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
@@ -5,9 +13,17 @@
 #include "credentials.h"
 #include "fetchToken.h"
 #include "apiClient.h"
+#include "setupMode.h"
 
 WebServer server(80);
 
+/**
+ * @brief Sends a provisioning request to mark the device as registered on the server.
+ *
+ * @param deviceId  The unique device identifier.
+ * @param token     JWT token for authentication.
+ * @return true if provisioning was successful (HTTP 204), false otherwise.
+ */
 bool setDeviceProvisioning(String deviceId, String token) {
   ApiClient client;
   ApiResponse res = client.patch(String(API_BASE_URL) + "/devices/" + deviceId, "{}", token);
@@ -24,6 +40,12 @@ bool setDeviceProvisioning(String deviceId, String token) {
   return false;
 }
 
+/**
+ * @brief Handles incoming POST requests to the /setup endpoint.
+ *
+ * Expects a JSON body with deviceId, secret, ssid, password, and interval.
+ * Saves credentials and restarts the device on success.
+ */
 void handleSetup() {
   Serial.println("---- INCOMING REQUEST ----");
   Serial.println(server.method());
@@ -70,6 +92,12 @@ void handleSetup() {
   ESP.restart();
 }
 
+/**
+ * @brief Starts the device in setup mode as a WiFi access point.
+ *
+ * Creates a local HTTP server on port 80 with a /setup endpoint.
+ * Automatically restarts after SETUP_TIMEOUT_MS if no setup is performed.
+ */
 void startSetupMode() {
   WiFi.softAP(SETUP_AP_SSID);
 
