@@ -13,6 +13,10 @@
 #include "setupMode.h"
 #include "commands.h"
 #include "apiClient.h"
+#include "calculationFactory.h"
+#include "calculationStore.h"
+
+extern void setCalculationMethod(const String& method);
 
 /**
  * @brief Handles a single command received from the server.
@@ -65,6 +69,27 @@ CommandResult handleCommand(JsonObject command, String deviceId, String token, S
   else if (type == "restart") {
     Serial.println("Restart command received");
     return { true, true, false };
+  }
+
+  else if (type == "change_calculation") {
+      if (!command["payload"]["method"].is<String>()) {
+          Serial.println("Invalid method payload");
+          return { false, false, false };
+      }
+
+      String method = command["payload"]["method"].as<String>();
+
+      if (method != "median" && method != "average" &&
+          method != "min"    && method != "validation") {
+          Serial.println("Unknown method: " + method);
+          return { false, false, false };
+      }
+
+      saveCalculationMethod(method);
+      setCalculationMethod(method);
+
+      Serial.println("Calculation method changed to: " + method);
+      return { true, false, false };
   }
 
   Serial.println("Unknown command type");
