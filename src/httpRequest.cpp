@@ -30,7 +30,7 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
     return true;
   }
 
-  DynamicJsonDocument doc(4096);
+  JsonDocument doc;
   doc["deviceId"] = deviceId;
   doc["signal"] = signal;
 
