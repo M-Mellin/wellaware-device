@@ -10,6 +10,7 @@ Built with **C++** and the **Arduino framework** for ESP32.
  
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
+- [CI/CD](#cicd)
 - [Flashing the Device](#flashing-the-device)
 - [Device Setup](#device-setup)
 - [Architecture](#architecture)
