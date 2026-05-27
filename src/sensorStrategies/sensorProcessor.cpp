@@ -5,7 +5,7 @@
  * @author Mattias Mellin
  * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
  */
-#include "SensorProcessor.h"
+#include "sensorProcessor.h"
 #include <Arduino.h>
  
 SensorProcessor::SensorProcessor(ISensor* sensor, ICalculation* calculation, int samples, int maxRetries)

@@ -12,9 +12,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <LittleFS.h>
-#include "sensorStrategies/SensorProcessor.h"
-#include "sensorStrategies/UltrasonicSensor.h"
-#include "sensorStrategies/MedianCalculation.h"
+#include "sensorStrategies/sensorProcessor.h"
+#include "sensorStrategies/ultrasonicSensor.h"
+#include "sensorStrategies/medianCalculation.h"
 #include "calculationFactory.h"
 #include "calculationStore.h"
 #include "wifiConnect.h"

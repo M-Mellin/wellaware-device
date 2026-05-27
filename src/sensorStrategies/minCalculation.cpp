@@ -5,7 +5,7 @@
  * @author Mattias Mellin
  * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
  */
-#include "MinCalculation.h"
+#include "minCalculation.h"
 #include <algorithm>
 #include <cmath>
  

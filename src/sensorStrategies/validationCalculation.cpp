@@ -7,7 +7,7 @@
  * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
  */
 
-#include "ValidationCalculation.h"
+#include "validationCalculation.h"
 #include <Arduino.h>
 #include <algorithm>
 #include <cmath>
