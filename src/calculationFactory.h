@@ -1,9 +1,9 @@
 #pragma once
 #include "sensorStrategies/ICalculation.h"
-#include "sensorStrategies/MedianCalculation.h"
-#include "sensorStrategies/AverageCalculation.h"
-#include "sensorStrategies/MinCalculation.h"
-#include "sensorStrategies/ValidationCalculation.h"
+#include "sensorStrategies/medianCalculation.h"
+#include "sensorStrategies/averageCalculation.h"
+#include "sensorStrategies/minCalculation.h"
+#include "sensorStrategies/validationCalculation.h"
 #include <Arduino.h>
 #include "../config.h"
 
