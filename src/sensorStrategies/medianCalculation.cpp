@@ -5,7 +5,7 @@
  * @author Mattias Mellin
  * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
  */
-#include "MedianCalculation.h"
+#include "medianCalculation.h"
 #include <algorithm>
 #include <cmath>
  

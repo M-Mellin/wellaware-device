@@ -34,9 +34,9 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
   doc["deviceId"] = deviceId;
   doc["signal"] = signal;
 
-  JsonArray data = doc.createNestedArray("data");
+  JsonArray data = doc["data"].to<JsonArray>();
   for (int i = 0; i < count; i++) {
-    JsonObject entry = data.createNestedObject();
+    JsonObject entry = data.add<JsonObject>();
     entry["level"] = measurements[i].level;
     entry["timestamp"] = measurements[i].timestamp;
   }
