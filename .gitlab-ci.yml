@@ -14,9 +14,14 @@ auto-tag:
     GIT_DEPTH: 0
   script:
     - apk add --no-cache git
+    - |
+      if [ -z "$VERSION_MAJOR" ] || [ -z "$VERSION_MINOR" ]; then
+        echo "ERROR: VERSION_MAJOR and VERSION_MINOR must be set in CI/CD variables"
+        exit 1
+      fi
     - git fetch --tags
     - PREFIX="v${VERSION_MAJOR}.${VERSION_MINOR}."
-    - LATEST=$(git tag --sort=-v:refname | grep -E "^${PREFIX}[0-9]+$" | head -1)
+    - LATEST=$(git tag --sort=-v:refname | grep -E "^${PREFIX}[0-9]+$" | head -1 || true)
     - |
       if [ -z "$LATEST" ]; then
         PATCH=0
