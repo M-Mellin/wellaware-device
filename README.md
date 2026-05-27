@@ -47,6 +47,11 @@ Built with **C++** and the **Arduino framework** for ESP32.
 #define FLASH_SAVE_INTERVAL 15 * 60 * 1000             // 15 minutes
 #define MEASUREMENTS_FILE   "/measurements.bin"
 #define MAX_MEASUREMENTS    500
+
+// Calculation method
+#define DEFAULT_CALCULATION_METHOD "validation"
+#define CALCULATION_METHOD_FILE    "/calculation_method.txt"
+#define VALIDATION_MIN_INTERVAL_SEC 60
  
 // Ultrasonic sensor
 #define ECHO_PIN            4
