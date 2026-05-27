@@ -1,8 +1,22 @@
+/**
+ * @file main.cpp
+ * @brief Main entry point for the WellAware device firmware.
+ *
+ * Handles device initialization, WiFi connectivity, sensor measurements,
+ * data uploads, command processing, and OTA updates.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <LittleFS.h>
-#include "floatSensor.h"
-#include "ultrasonicSensor.h"
+#include "sensorStrategies/SensorProcessor.h"
+#include "sensorStrategies/UltrasonicSensor.h"
+#include "sensorStrategies/MedianCalculation.h"
+#include "calculationFactory.h"
+#include "calculationStore.h"
 #include "wifiConnect.h"
 #include "httpRequest.h"
 #include "wifiSignal.h"
@@ -15,9 +29,7 @@
 #include "fetchToken.h"
 #include "commands.h"
 #include "ota.h"
-
-const int ECHO_PIN = 4;
-const int TRIG_PIN = 5;
+#include "../config.h"
 
 String wifiSsid;
 String wifiPassword;
@@ -32,111 +44,30 @@ String jwtToken;
 
 unsigned long lastTokenRefresh = 0;
 
-const unsigned long TOKEN_REFRESH_INTERVAL = 3600000;
-
-const int MAX_MEASUREMENTS = 500;
-
-const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;
-const int daylightOffset_sec = 0;
-
 bool timeInitialized = false;
 
 Measurement pendingMeasurements[MAX_MEASUREMENTS];
 int measurementCount = 0;
 
-void checkForNewVersion() {
-  static unsigned long lastOtaCheck = 0;
-  const unsigned long OTA_CHECK_INTERVAL = 6UL * 60UL * 60UL * 1000UL;
+SensorProcessor* processor = nullptr;
 
-  if (millis() - lastOtaCheck >= OTA_CHECK_INTERVAL) {
-    lastOtaCheck = millis();
-    checkForOtaUpdate(deviceId, jwtToken);
-  }
-}
+void checkForNewVersion();
+void handleWifiConnection();
+void refreshTokenIfNeeded();
+void handleMeasurements();
+void handleMeasurementUploads();
+void handleCommands();
+void setCalculationMethod(const String& method);
 
-void handleWifiConnection() {
-
-  if (WiFi.status() != WL_CONNECTED) {
-
-    Serial.println("WiFi lost. Reconnecting...");
-
-    connectWifi(wifiSsid, wifiPassword);
-  }
-}
-
-void refreshTokenIfNeeded() {
-  if (jwtToken.isEmpty() || millis() - lastTokenRefresh > TOKEN_REFRESH_INTERVAL) {
-    Serial.println("Refreshing JWT token...");
-
-    jwtToken = fetchToken(deviceId, deviceSecret);
-
-    if (jwtToken.isEmpty()) {
-      Serial.println("Failed to refresh JWT token");
-    } else {
-      Serial.println("JWT token refreshed successfully");
-      lastTokenRefresh = millis();
-    }
-  }
-}
-
-void handleMeasurements() {
-  float distance = readUltrasonicSensor(ECHO_PIN, TRIG_PIN);
-
-  unsigned long unixTimestamp = time(nullptr);
-
-  addMeasurement(pendingMeasurements, distance, unixTimestamp, measurementCount, MAX_MEASUREMENTS);
-}
-
-void handleMeasurementUploads() {
-  if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
-    return;
-  }
-
-  float signal = getWifiSignal();
-
-  Serial.println("Trying to send pending measurements...");
-
-  bool success = sendMessage(pendingMeasurements, measurementCount, signal, deviceId, jwtToken);
-
-  if (success) {
-    clearMeasurements(measurementCount);
-
-    Serial.println("SUCESS: Measurements have been sent.");
-  } else {
-    Serial.println("FAILED: Send failed, local data is kept.");
-  }
-}
-
-void handleCommands() {
-
-  if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
-    return;
-  }
-
-  bool shouldEnterSetupMode = checkForCommands(deviceId, jwtToken);
-
-  loadInterval(deviceInterval);
-
-  if (shouldEnterSetupMode) {
-
-    Serial.println("Entering setup mode...");
-
-    startSetupMode();
-  }
-}
-
+/**
+ * @brief Initializes the device, loads credentials, connects to WiFi,
+ *        syncs time, fetches a JWT token, and provisions the device if needed.
+ */
 void setup() {
   Serial.begin(115200);
 
-  if (!LittleFS.begin(false)) {
-    Serial.println("LittleFS mount failed, formatting...");
-    LittleFS.format();
-    if (!LittleFS.begin(false)) {
-      Serial.println("LittleFS still failed!");
-    } else {
-      Serial.println("LittleFS mounted after format.");
-    }
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS failed to mount!");
   } else {
     Serial.println("LittleFS mounted successfully.");
   }
@@ -158,13 +89,21 @@ void setup() {
 
   connectWifi(wifiSsid, wifiPassword);
 
+  unsigned long wifiStart = millis();
+
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 10000) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+
   while (!timeInitialized) {
     if (WiFi.status() == WL_CONNECTED) {
-      timeInitialized = syncTime(ntpServer, gmtOffset_sec, daylightOffset_sec);
+      timeInitialized = syncTime();
     }
 
     if (!timeInitialized) {
-      Serial.println("Watiing for valid time...");
+      Serial.println("Waiting for valid time...");
       delay(5000);
 
       if (WiFi.status() != WL_CONNECTED) {
@@ -175,7 +114,14 @@ void setup() {
   
   jwtToken = fetchToken(deviceId, deviceSecret);
 
-  checkForOtaUpdate(deviceId, jwtToken);
+  if (jwtToken.isEmpty()) {
+    Serial.println("Failed to fetch token, skipping OTA check");
+  } else {
+    checkForOtaUpdate(deviceId, jwtToken);
+  }
+
+  String method = loadCalculationMethod();
+  setCalculationMethod(method);
 
   lastTokenRefresh = millis();
 
@@ -201,6 +147,10 @@ void setup() {
   }
 }
 
+/**
+ * @brief Main loop. Runs continuously to handle connectivity,
+ *        measurements, uploads, commands, and OTA checks.
+ */
 void loop() {
   checkForNewVersion();
 
@@ -215,4 +165,122 @@ void loop() {
   handleCommands();
 
   delay(deviceInterval);
+}
+
+/**
+ * @brief Checks for a new OTA firmware version at a fixed interval.
+ *
+ * Only triggers a check every OTA_CHECK_INTERVAL milliseconds.
+ */
+void checkForNewVersion() {
+  static unsigned long lastOtaCheck = 0;
+
+  if (millis() - lastOtaCheck >= OTA_CHECK_INTERVAL) {
+    lastOtaCheck = millis();
+    checkForOtaUpdate(deviceId, jwtToken);
+  }
+}
+
+/**
+ * @brief Reconnects to WiFi if the connection has been lost.
+ */
+void handleWifiConnection() {
+
+  if (WiFi.status() != WL_CONNECTED) {
+
+    Serial.println("WiFi lost. Reconnecting...");
+
+    connectWifi(wifiSsid, wifiPassword);
+  }
+}
+
+/**
+ * @brief Refreshes the JWT token if it is empty or has expired.
+ */
+void refreshTokenIfNeeded() {
+  if (jwtToken.isEmpty() || millis() - lastTokenRefresh > TOKEN_REFRESH_INTERVAL) {
+    Serial.println("Refreshing JWT token...");
+
+    jwtToken = fetchToken(deviceId, deviceSecret);
+
+    if (jwtToken.isEmpty()) {
+      Serial.println("Failed to refresh JWT token");
+    } else {
+      Serial.println("JWT token refreshed successfully");
+      lastTokenRefresh = millis();
+    }
+  }
+}
+
+/**
+ * @brief Reads the ultrasonic sensor and adds the measurement to the buffer.
+ */
+void handleMeasurements() {
+  float distance = processor->read();
+
+  if (distance < 0) {
+    return;
+  }
+
+  unsigned long unixTimestamp = time(nullptr);
+
+  addMeasurement(pendingMeasurements, distance, unixTimestamp, measurementCount, MAX_MEASUREMENTS);
+}
+
+/**
+ * @brief Uploads pending measurements to the server if WiFi and token are available.
+ *
+ * Clears the local buffer on success.
+ */
+void handleMeasurementUploads() {
+  if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
+    return;
+  }
+
+  float signal = getWifiSignal();
+
+  Serial.println("Trying to send pending measurements...");
+
+  bool success = sendMessage(pendingMeasurements, measurementCount, signal, deviceId, jwtToken);
+
+  if (success) {
+    clearMeasurements(measurementCount);
+
+    Serial.println("SUCCESS: Measurements have been sent.");
+  } else {
+    Serial.println("FAILED: Send failed, local data is kept.");
+  }
+}
+
+/**
+ * @brief Fetches and processes pending commands from the server.
+ *
+ * Enters setup mode if the server requests it.
+ */
+void handleCommands() {
+
+  if (WiFi.status() != WL_CONNECTED || jwtToken.isEmpty()) {
+    return;
+  }
+
+  bool shouldEnterSetupMode = checkForCommands(deviceId, jwtToken);
+
+  loadInterval(deviceInterval);
+
+  if (shouldEnterSetupMode) {
+
+    Serial.println("Entering setup mode...");
+
+    startSetupMode();
+  }
+}
+
+void setCalculationMethod(const String& method) {
+    delete processor;
+    processor = new SensorProcessor(
+        new UltrasonicSensor(TRIG_PIN, ECHO_PIN),
+        createCalculation(method),
+        MEDIAN_SAMPLES
+    );
+    Serial.println("[Sensor] Calculation method set to: " + method);
 }
