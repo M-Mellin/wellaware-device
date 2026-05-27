@@ -1,15 +1,29 @@
+/**
+ * @file localData.cpp
+ * @brief Local storage management for measurements using LittleFS.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFi.h>
 #include "localData.h"
 
-#define MEASUREMENTS_FILE "/measurements.bin"
-
-const unsigned long FLASH_SAVE_INTERVAL = 15 * 60 * 1000; // Every 15:th minute
 static unsigned long lastFlashSave = 0;
 
-void addMeasurement(Measurement pendingMeasurements[], float level, unsigned long timestamp, int& measurementCount, int MAX_MEASUREMENTS) {
-  if (measurementCount >= MAX_MEASUREMENTS) {
+/**
+ * @brief Adds a measurement to the buffer and saves to flash if WiFi is disconnected.
+ *
+ * @param pendingMeasurements  Array to store measurements in.
+ * @param level                The measured level value.
+ * @param timestamp            Unix timestamp of the measurement.
+ * @param measurementCount     Reference to the current measurement count.
+ * @param maxMeasurements      Maximum number of measurements the buffer can hold.
+ */
+void addMeasurement(Measurement pendingMeasurements[], float level, unsigned long timestamp, int& measurementCount, int maxMeasurements) {
+  if (measurementCount >= maxMeasurements) {
     Serial.println("Buffer full. Measurement skipped.");
     return;
   }
@@ -29,6 +43,11 @@ void addMeasurement(Measurement pendingMeasurements[], float level, unsigned lon
   Serial.println(measurementCount);
 }
 
+/**
+ * @brief Clears all measurements from the buffer and removes the flash file.
+ *
+ * @param measurementCount Reference to the measurement count, reset to 0.
+ */
 void clearMeasurements(int& measurementCount) {
   measurementCount = 0;
   if (LittleFS.exists(MEASUREMENTS_FILE)) {
@@ -37,6 +56,13 @@ void clearMeasurements(int& measurementCount) {
   Serial.println("Measurements cleared.");
 }
 
+/**
+ * @brief Saves the current measurement buffer to flash storage.
+ *
+ * @param pendingMeasurements  Array of measurements to save.
+ * @param measurementCount     Number of measurements to save.
+ * @return true if saved successfully, false otherwise.
+ */
 bool saveMeasurementsToFlash(Measurement pendingMeasurements[], int measurementCount) {
   File file = LittleFS.open(MEASUREMENTS_FILE, "w");
   if (!file) {
@@ -44,15 +70,23 @@ bool saveMeasurementsToFlash(Measurement pendingMeasurements[], int measurementC
     return false;
   }
 
-  file.write((uint8_t*)&measurementCount, sizeof(measurementCount));
-  file.write((uint8_t*)pendingMeasurements, sizeof(Measurement) * measurementCount);
+  file.write(reinterpret_cast<uint8_t*>(&measurementCount), sizeof(measurementCount));
+  file.write(reinterpret_cast<uint8_t*>(pendingMeasurements), sizeof(Measurement) * measurementCount);
   file.close();
 
   Serial.println("Saved to flash.");
   return true;
 }
 
-bool loadMeasurementsFromFlash(Measurement pendingMeasurements[], int& measurementCount, int MAX_MEASUREMENTS) {
+/**
+ * @brief Loads measurements from flash storage into the buffer.
+ *
+ * @param pendingMeasurements  Array to load measurements into.
+ * @param measurementCount     Reference to store the number of loaded measurements.
+ * @param maxMeasurements      Maximum number of measurements the buffer can hold.
+ * @return true if measurements were loaded successfully, false otherwise.
+ */
+bool loadMeasurementsFromFlash(Measurement pendingMeasurements[], int& measurementCount, int maxMeasurements) {
   if (!LittleFS.exists(MEASUREMENTS_FILE)) {
     Serial.println("No stored measurements found.");
     return false;
@@ -65,16 +99,16 @@ bool loadMeasurementsFromFlash(Measurement pendingMeasurements[], int& measureme
   }
 
   int storedCount = 0;
-  file.read((uint8_t*)&storedCount, sizeof(storedCount));
+  file.read(reinterpret_cast<uint8_t*>(&storedCount), sizeof(storedCount));
 
-  if (storedCount < 0 || storedCount > MAX_MEASUREMENTS) {
+  if (storedCount < 0 || storedCount > maxMeasurements) {
     Serial.println("Corrupt measurement file. Discarding.");
     file.close();
     LittleFS.remove(MEASUREMENTS_FILE);
     return false;
   }
 
-  file.read((uint8_t*)pendingMeasurements, sizeof(Measurement) * storedCount);
+  file.read(reinterpret_cast<uint8_t*>(pendingMeasurements), sizeof(Measurement) * storedCount);
   file.close();
 
   measurementCount = storedCount;

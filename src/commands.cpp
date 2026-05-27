@@ -1,134 +1,127 @@
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
-#include <Arduino.h>
+/**
+ * @file commands.cpp
+ * @brief Handles incoming device commands from the WellAware API.
+ *
+ * @author Mattias Mellin
+ * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
+ */
+
 #include <ArduinoJson.h>
+#include <Arduino.h>
 #include "fetchToken.h"
 #include "credentials.h"
 #include "setupMode.h"
 #include "commands.h"
+#include "apiClient.h"
+#include "calculationFactory.h"
+#include "calculationStore.h"
 
+extern void setCalculationMethod(const String& method);
+
+/**
+ * @brief Handles a single command received from the server.
+ *
+ * @param command    JSON object containing the command type and payload.
+ * @param deviceId   The unique device identifier.
+ * @param token      JWT token for authentication.
+ * @param commandId  The unique command identifier.
+ * @return CommandResult indicating success, restart, and setup mode flags.
+ */
 CommandResult handleCommand(JsonObject command, String deviceId, String token, String commandId) {
   String type = command["type"];
 
   if (type == "setup_mode") {
     Serial.println("Starting Setup Mode");
-
-    return {
-      true,
-      false,
-      true
-    };
+    return { true, false, true };
   }
 
   else if (type == "set_interval") {
-
     if (command["payload"]["interval"].isNull()) {
       Serial.println("Invalid interval payload");
-
-      return {
-        false,
-        false,
-        false
-      };
+      return { false, false, false };
     }
 
-    int interval =
-      command["payload"]["interval"].as<int>();
-
+    int interval = command["payload"]["interval"].as<int>();
     deviceInterval = interval * 1000;
-
-    Serial.println(
-      "Changed sending interval to: " +
-      String(interval)
-    );
-
+    Serial.println("Changed sending interval to: " + String(interval));
     saveInterval(deviceInterval);
 
-    return {
-      true,
-      false,
-      false
-    };
+    return { true, false, false };
   }
 
   else if (type == "update_wifi") {
-
     if (
       !command["payload"]["ssid"].is<String>() ||
       !command["payload"]["password"].is<String>()
     ) {
       Serial.println("Invalid WiFi payload");
-
-      return {
-        false,
-        false,
-        false
-      };
+      return { false, false, false };
     }
 
     String ssid = command["payload"]["ssid"];
     String password = command["payload"]["password"];
-
     Serial.println("Updating WiFi credentials");
-
     saveWifi(ssid, password);
 
-    return {
-      true,
-      true,
-      false
-    };
+    return { true, true, false };
   }
 
   else if (type == "restart") {
-
     Serial.println("Restart command received");
+    return { true, true, false };
+  }
 
-    return {
-      true,
-      true,
-      false
-    };
+  else if (type == "change_calculation") {
+      if (!command["payload"]["method"].is<String>()) {
+          Serial.println("Invalid method payload");
+          return { false, false, false };
+      }
+
+      String method = command["payload"]["method"].as<String>();
+
+      if (method != "median" && method != "average" &&
+          method != "min"    && method != "validation") {
+          Serial.println("Unknown method: " + method);
+          return { false, false, false };
+      }
+
+      saveCalculationMethod(method);
+      setCalculationMethod(method);
+
+      Serial.println("Calculation method changed to: " + method);
+      return { true, false, false };
   }
 
   Serial.println("Unknown command type");
-
-  return {
-    false,
-    false,
-    false
-  };
+  return { false, false, false };
 }
 
+/**
+ * @brief Fetches and processes all pending commands from the server.
+ *
+ * Iterates over pending commands, acknowledges each one, and handles
+ * setup mode or restart flags after processing.
+ *
+ * @param deviceId  The unique device identifier.
+ * @param token     JWT token for authentication.
+ * @return true if the device should enter setup mode, false otherwise.
+ */
 bool checkForCommands(String deviceId, String token) {
   bool enterSetupMode = false;
   bool shouldRestart = false;
 
-  static WiFiClientSecure client;
-  client.setInsecure();   
+  ApiClient client;
+  String url = String(API_BASE_URL) + "/devices/" + deviceId + "/commands";
+  ApiResponse res = client.get(url, token);
 
-  HTTPClient http;
+  if (res.code == 200) {
+    Serial.println(res.body);
 
-  http.setTimeout(5000);
-  http.setReuse(false);
-
-  http.begin(client, "https://mellin.net/wellaware/api/v1/devices/" + deviceId + "/commands");
-  http.addHeader("Authorization", String("Bearer ") + token);
-
-  int code = http.GET();
-
-  if (code == 200) {
-    String response = http.getString();
-    Serial.println(response);
-
-    DynamicJsonDocument doc(4096);
-
-    DeserializationError error = deserializeJson(doc, response);
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, res.body);
 
     if (error) {
       Serial.println("Failed to parse JSON");
-
-      http.end();
       return false;
     }
 
@@ -136,8 +129,6 @@ bool checkForCommands(String deviceId, String token) {
 
     if (commands.size() == 0) {
       Serial.println("No pending commands");
-
-      http.end();
       return false;
     }
 
@@ -145,29 +136,16 @@ bool checkForCommands(String deviceId, String token) {
       String commandId = command["id"];
       String type = command["type"];
 
-      Serial.println(
-        "Processing command: " + commandId
-      );
+      Serial.println("Processing command: " + commandId);
 
-      bool processingAck = 
-        acknowledgeCommand(
-          deviceId,
-          token,
-          commandId,
-          "processing"
-        );
-
+      bool processingAck = acknowledgeCommand(deviceId, token, commandId, "processing");
       if (!processingAck) {
-        Serial.println(
-          "Failed to acknowledge processing state"
-        );
+        Serial.println("Failed to acknowledge processing state");
       }
 
       if (type == "remove_device") {
         acknowledgeCommand(deviceId, token, commandId, "completed");
         removeDeviceFromServer(deviceId, token, commandId);
-        
-        http.end();
         clearAllData();
         startSetupMode();
         return false;
@@ -182,97 +160,57 @@ bool checkForCommands(String deviceId, String token) {
         result.success ? "completed" : "failed"
       );
 
-      if (result.enterSetupMode) {
-        enterSetupMode = true;
-      }
-
-      if (result.requiresRestart) {
-        shouldRestart = true;
-      }
+      if (result.enterSetupMode) enterSetupMode = true;
+      if (result.requiresRestart) shouldRestart = true;
     }
 
   } else {
-    Serial.println(
-      "Failed to fetch commands. HTTP code: " +
-      String(code)
-    );
+    Serial.println("Failed to fetch commands. HTTP code: " + String(res.code));
   }
-  
-  http.end();
 
   if (shouldRestart) {
-
     Serial.println("Restarting device...");
-
     delay(1000);
-
     ESP.restart();
   }
 
   return enterSetupMode;
 }
 
-bool acknowledgeCommand(
-  String deviceId,
-  String token,
-  String commandId,
-  String status
-) {
+/**
+ * @brief Sends an acknowledgement for a processed command.
+ *
+ * @param deviceId   The unique device identifier.
+ * @param token      JWT token for authentication.
+ * @param commandId  The unique command identifier to acknowledge.
+ * @param status     The status to report: "processing", "completed", or "failed".
+ * @return true if the server accepted the acknowledgement (HTTP 204), false otherwise.
+ */
+bool acknowledgeCommand(String deviceId, String token, String commandId, String status) {
+  ApiClient client;
 
-  static WiFiClientSecure client;
-  client.setInsecure();
-
-  HTTPClient http;
-
-  http.setTimeout(5000);
-  http.setReuse(false);
-
-  String url =
-    "https://mellin.net/wellaware/api/v1/devices/" +
-    deviceId +
-    "/commands/" +
-    commandId +
-    "/ack";
-
-  http.begin(client, url);
-
-  http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("Content-Type", "application/json");
-
-  DynamicJsonDocument doc(256);
-
+  JsonDocument doc;
   doc["status"] = status;
-
   String body;
   serializeJson(doc, body);
 
-  int code = http.PATCH(body);
+  String url = String(API_BASE_URL) + "/devices/" + deviceId + "/commands/" + commandId + "/ack";
+  ApiResponse res = client.patch(url, body, token);
 
-  http.end();
-
-  return code == 204;
+  return res.code == 204;
 }
 
+/**
+ * @brief Sends a request to remove the device from the server.
+ *
+ * @param deviceId   The unique device identifier.
+ * @param token      JWT token for authentication.
+ * @param commandId  The command ID that triggered the removal.
+ * @return true if the server confirmed removal (HTTP 204), false otherwise.
+ */
 bool removeDeviceFromServer(String deviceId, String token, String commandId) {
-  static WiFiClientSecure client;
-  client.setInsecure();
-
-  HTTPClient http;
-  http.setTimeout(5000);
-  http.setReuse(false);
-
-  String url =
-    "https://mellin.net/wellaware/api/v1/devices/" +
-    deviceId +
-    "?commandId=" +
-    commandId;
-
-  http.begin(client, url);
-  http.addHeader("Authorization", "Bearer " + token);
-  http.addHeader("Content-Type", "application/json");
-
-  int code = http.sendRequest("DELETE");
-  http.end();
-
-  return code == 204;
+  ApiClient client;
+  String url = String(API_BASE_URL) + "/devices/" + deviceId + "?commandId=" + commandId;
+  ApiResponse res = client.del(url, token);
+  return res.code == 204;
 }
