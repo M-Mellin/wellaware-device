@@ -5,7 +5,7 @@
  * @author Mattias Mellin
  * @email mm225vh@student.lnu.se | mattias.mellin@gmail.com
  */
-#include "AverageCalculation.h"
+#include "averageCalculation.h"
 #include <cmath>
  
 float AverageCalculation::calculate(float* samples, int count) {
