@@ -5,6 +5,7 @@
 #include "sensorStrategies/MinCalculation.h"
 #include "sensorStrategies/ValidationCalculation.h"
 #include <Arduino.h>
+#include "../config.h"
 
 inline ICalculation* createCalculation(const String& method) {
     if (method == "average")    return new AverageCalculation();
