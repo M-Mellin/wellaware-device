@@ -13,7 +13,7 @@ auto-tag:
   variables:
     GIT_DEPTH: 0
   script:
-    - apk add --no-cache git
+    - apk add --no-cache git curl
     - |
       if [ -z "$VERSION_MAJOR" ] || [ -z "$VERSION_MINOR" ]; then
         echo "ERROR: VERSION_MAJOR and VERSION_MINOR must be set in CI/CD variables"
@@ -31,10 +31,12 @@ auto-tag:
       fi
     - NEW_TAG="v${VERSION_MAJOR}.${VERSION_MINOR}.${PATCH}"
     - echo "Tagging $NEW_TAG"
-    - git config user.email "gitlab-ci@gitlab.com"
-    - git config user.name "GitLab CI"
-    - git tag $NEW_TAG
-    - git push "https://oauth2:${CI_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" $NEW_TAG
+    - |
+      curl --fail-with-body -X POST \
+        "https://gitlab.lnu.se/api/v4/projects/$CI_PROJECT_ID/repository/tags" \
+        -H "PRIVATE-TOKEN: $CI_PUSH_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"tag_name\": \"$NEW_TAG\", \"ref\": \"$CI_COMMIT_SHA\"}"
   rules:
     - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
 
@@ -96,7 +98,7 @@ release-firmware:
       printf '{"version":"%s","sha256":"%s","binary":"%s"}' \
         "$CI_COMMIT_TAG" "$SHA" "$BINARY" > payload.json
     - |
-      curl -X POST "$API_BASE_URL/ota/release" \
+      curl --fail-with-body -X POST "$API_BASE_URL/ota/release" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $OTA_ADMIN_SECRET" \
         --data-binary @payload.json
@@ -111,8 +113,8 @@ create-gitlab-release:
     - apk add --no-cache curl
     - |
       curl --fail-with-body -X POST \
-        "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/releases" \
-        -H "Authorization: Bearer $CI_PUSH_TOKEN" \
+        "https://gitlab.lnu.se/api/v4/projects/$CI_PROJECT_ID/releases" \
+        -H "PRIVATE-TOKEN: $CI_PUSH_TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
           \"name\": \"Release $CI_COMMIT_TAG\",
