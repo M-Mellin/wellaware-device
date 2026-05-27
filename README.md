@@ -86,27 +86,51 @@ openssl s_client -connect your-api-domain.com:443 -showcerts
 
 ## CI/CD
  
-The project uses **GitLab CI** with two stages: `build → release`.
- 
+The project uses **GitLab CI** with three stages: `tag → build → release`.
+
 | Stage | Description |
 |-------|-------------|
+| `auto-tag` | Triggered on push to `main`. Reads `VERSION_MAJOR` and `VERSION_MINOR` variables, increments the patch number, and pushes a new tag (e.g. `v1.0.3`) |
 | `build-firmware` | Installs PlatformIO, generates `config.h` from CI variables, and compiles the firmware |
-| `release-firmware` | Computes SHA256, base64-encodes the binary, and registers the release via `POST /api/v1/ota/release` |
- 
-Both stages trigger only on tags matching `v*` (e.g. `v1.2.0`). The tag is used as the firmware version number.
- 
-**Required CI/CD variables** (set in GitLab project settings):
- 
+| `release-firmware` | Computes SHA256 and uploads the binary to `POST /api/v1/ota/release` |
+| `create-gitlab-release` | Creates a GitLab Release entry tied to the tag |
+
+`auto-tag` triggers only on pushes to `main`. The remaining stages trigger only on tags matching `v*` (e.g. `v1.2.0`), which means they are automatically triggered by the tag that `auto-tag` creates.
+
+### Versioning
+
+Version numbers follow `vMAJOR.MINOR.PATCH`. Patch is incremented automatically on every merge to `main`. Major and minor are controlled manually via CI/CD variables.
+
+To bump the minor version, update `VERSION_MINOR` and reset it together with a new `VERSION_MAJOR` if needed. The next merge to `main` will start from patch `0`.
+
+| Scenario | Action |
+|----------|--------|
+| Regular release | Just merge to `main` — patch increments automatically |
+| New minor version | Set `VERSION_MINOR` to next value in GitLab CI/CD variables |
+| New major version | Set `VERSION_MAJOR` to next value and reset `VERSION_MINOR` to `0` |
+
+### Required CI/CD variables
+
+Set in **GitLab → Settings → CI/CD → Variables**:
+
 | Variable | Description |
 |----------|-------------|
 | `API_BASE_URL` | Base URL of the WellAware API |
 | `ROOT_CA_CERT` | Base64-encoded TLS root CA certificate |
 | `OTA_ADMIN_SECRET` | Admin secret for the OTA release endpoint |
- 
+| `DEFAULT_CALCULATION_METHOD` | Default calculation method (e.g. `validation`) |
+| `CI_PUSH_TOKEN` | Project Access Token with `write_repository` and `api` scope |
+| `VERSION_MAJOR` | Major version number (e.g. `1`) |
+| `VERSION_MINOR` | Minor version number (e.g. `0`) |
+
+To base64-encode the root CA certificate:
+```bash
+base64 -w 0 root_ca.pem
+```
+
 `config.h` is generated entirely by the pipeline — it does not need to exist in the repository.
  
 ---
-
 
 ## Flashing the Device
  
@@ -142,6 +166,7 @@ The device ID and secret are obtained when registering the device via the WellAw
  
 3. On success, the device saves the credentials to persistent storage and restarts.
 4. Setup mode automatically times out and restarts after 5 minutes if no configuration is received.
+
 ---
  
 ## Architecture
@@ -168,12 +193,14 @@ wellaware-firmware/
  
 ### Key Design Decisions
  
-- **Device ID** — derived from the ESP32 eFuse MAC address, formatted as `wellaware-XXXXYYYYYYYY`. Guaranteed unique per chip, no configuration required.
+- **Device ID** — derived from the ESP32 eFuse MAC address, formatted as `wellaware-XXXXYYYYYYYY`. Guaranteed unique per chip, no configuration required.*
 - **Offline buffering** — measurements are stored in a RAM buffer. When WiFi is unavailable, the buffer is periodically flushed to LittleFS flash storage and uploaded once connectivity is restored.
 - **Median filtering** — the ultrasonic sensor takes multiple samples per reading and returns the median, reducing the impact of spurious echo readings.
 - **JWT refresh** — the device token is refreshed automatically every 55 minutes, before the 1-hour expiry.
 - **OTA** — on startup and periodically during operation, the device checks the API for a newer firmware version. If one is found, it downloads and installs the binary over HTTPS and restarts.
 - **Persistent storage** — credentials, WiFi settings, and measurement interval are stored in ESP32 NVS (Non-Volatile Storage) via the `Preferences` library and survive power cycles.
+
+>\* **Device ID** is not implemented
 ---
  
 ## Main Loop
@@ -228,4 +255,3 @@ Wraps ESP32 `Preferences` (NVS) for persistent storage of device ID, secret, WiF
 **Mattias Mellin**\
 <mm225vh@student.lnu.se> · <mattias.mellin@gmail.com>\
 [GitHub](https://github.com/M-Mellin) · [LinkedIn](https://www.linkedin.com/in/mattias-mellin-22a283267/)
- 

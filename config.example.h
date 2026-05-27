@@ -18,6 +18,11 @@
 #define TRIG_PIN 5
 #define MEDIAN_SAMPLES 12
 
+// Calculation Method
+#define DEFAULT_CALCULATION_METHOD "validation"
+#define CALCULATION_METHOD_FILE "/calculation_method.txt"
+#define VALIDATION_MIN_INTERVAL_SEC 60
+
 // Token refresh interval
 #define TOKEN_REFRESH_INTERVAL 3600000
 
