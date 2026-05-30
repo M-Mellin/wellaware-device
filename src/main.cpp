@@ -116,24 +116,21 @@ void setup() {
 
   if (jwtToken.isEmpty()) {
     Serial.println("Failed to fetch token, skipping OTA check");
+    lastTokenRefresh = 0;
   } else {
     checkForOtaUpdate(deviceId, jwtToken);
+    lastTokenRefresh = millis();
   }
 
   String method = loadCalculationMethod();
   setCalculationMethod(method);
 
-  lastTokenRefresh = millis();
-
-  if (!provisionStatus) {
-
+  if (!provisionStatus && !jwtToken.isEmpty()) {
     int retries = 0;
     bool success = false;
 
     while (!success && retries < 10) {
-
       success = setDeviceProvisioning(deviceId, jwtToken);
-
       if (!success) {
         retries++;
         delay(5000);
@@ -157,6 +154,15 @@ void loop() {
   handleWifiConnection();
 
   refreshTokenIfNeeded();
+
+  if (!provisionStatus && !jwtToken.isEmpty()) {
+    Serial.println("Retrying provisioning...");
+    if (setDeviceProvisioning(deviceId, jwtToken)) {
+      saveCredentials(deviceId, deviceSecret, true);
+      provisionStatus = true;
+      Serial.println("Provisioning successful.");
+    }
+  }
 
   handleMeasurements();
 
@@ -205,6 +211,7 @@ void refreshTokenIfNeeded() {
 
     if (jwtToken.isEmpty()) {
       Serial.println("Failed to refresh JWT token");
+      lastTokenRefresh = 0;
     } else {
       Serial.println("JWT token refreshed successfully");
       lastTokenRefresh = millis();

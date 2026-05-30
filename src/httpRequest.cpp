@@ -48,7 +48,7 @@ bool sendMessage(Measurement measurements[], int count, float signal, const Stri
   Serial.println(body);
 
   ApiClient client;
-  ApiResponse res = client.post(String(API_BASE_URL) + "/measurements", body, token);
+  ApiResponse res = client.post(String(API_BASE_URL) + "/measurements/" + deviceId, body, token);
 
   Serial.print("HTTP code: ");
   Serial.println(res.code);
