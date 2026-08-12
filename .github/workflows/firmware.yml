@@ -67,6 +67,10 @@ jobs:
 
   build-firmware:
     needs: auto-tag
+
+    outputs:
+      tag: ${{ needs.auto-tag.outputs.tag }}
+
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -143,3 +147,49 @@ jobs:
           name: firmware
           path: ${{ env.BIN_PATH }}
           retention-days: 1
+
+
+  release-firmware:
+    needs: build-firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: firmware
+          path: firmware
+
+      - name: Create OTA release payload
+        env:
+          OTA_VERSION: ${{ needs.build-firmware.outputs.tag }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          OTA_ADMIN_SECRET: ${{ secrets.OTA_ADMIN_SECRET }}
+        run: |
+          BIN_PATH="firmware/firmware.bin"
+
+          SHA=$(sha256sum "$BIN_PATH" | awk '{print $1}')
+
+          base64 -w 0 "$BIN_PATH" > firmware.b64
+
+          BINARY=$(cat firmware.b64)
+
+          printf '{"version":"%s","sha256":"%s","binary":"%s"}' \
+            "$OTA_VERSION" \
+            "$SHA" \
+            "$BINARY" > payload.json
+
+          echo "OTA version: $OTA_VERSION"
+          echo "SHA256: $SHA"
+
+      - name: Upload firmware to WellAware
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          OTA_ADMIN_SECRET: ${{ secrets.OTA_ADMIN_SECRET }}
+        run: |
+          curl --fail-with-body \
+            -X POST \
+            "$API_BASE_URL/ota/release" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OTA_ADMIN_SECRET" \
+            --data-binary @payload.json
