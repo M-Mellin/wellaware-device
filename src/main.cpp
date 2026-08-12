@@ -1,3 +1,103 @@
+// #include <Arduino.h>
+
+// HardwareSerial TFmini(1);
+
+// void setup()
+// {
+//     Serial.begin(115200);
+
+//     delay(1000);
+
+//     Serial.println();
+//     Serial.println("TFmini Plus test");
+//     Serial.println("----------------");
+
+//     // TFmini TX -> D2 (ESP32 RX)
+//     // TFmini RX -> D3 (ESP32 TX)
+//     TFmini.begin(115200, SERIAL_8N1, D2, D3);
+// }
+
+// void loop()
+// {
+//     static uint8_t buffer[9];
+//     static uint8_t index = 0;
+
+//     while (TFmini.available())
+//     {
+//         uint8_t byte = TFmini.read();
+
+//         // Leta efter paketets två header-bytes
+//         if (index == 0)
+//         {
+//             if (byte == 0x59)
+//             {
+//                 buffer[index++] = byte;
+//             }
+//         }
+//         else if (index == 1)
+//         {
+//             if (byte == 0x59)
+//             {
+//                 buffer[index++] = byte;
+//             }
+//             else
+//             {
+//                 index = 0;
+//             }
+//         }
+//         else
+//         {
+//             buffer[index++] = byte;
+
+//             // Komplett 9-byte-paket
+//             if (index == 9)
+//             {
+//                 // Kontrollera checksum
+//                 uint8_t checksum = 0;
+
+//                 for (int i = 0; i < 8; i++)
+//                 {
+//                     checksum += buffer[i];
+//                 }
+
+//                 if (checksum == buffer[8])
+//                 {
+//                     // Distance in cm
+//                     uint16_t distance =
+//                         buffer[2] |
+//                         (buffer[3] << 8);
+
+//                     // Signal strength
+//                     uint16_t strength =
+//                         buffer[4] |
+//                         (buffer[5] << 8);
+
+//                     // Temperature enligt TFmini-protokollet
+//                     int16_t temperatureRaw =
+//                         buffer[6] |
+//                         (buffer[7] << 8);
+
+//                     float temperature =
+//                         (temperatureRaw / 8.0f) - 256.0f;
+
+//                     Serial.print("Distance: ");
+//                     Serial.print(distance);
+//                     Serial.print(" cm");
+
+//                     Serial.print(" | Strength: ");
+//                     Serial.print(strength);
+
+//                     Serial.print(" | Temperature: ");
+//                     Serial.print(temperature, 1);
+//                     Serial.println(" C");
+//                 }
+
+//                 // Börja leta efter nästa paket
+//                 index = 0;
+//             }
+//         }
+//     }
+// }
 /**
  * @file main.cpp
  * @brief Main entry point for the WellAware device firmware.
@@ -13,7 +113,8 @@
 #include <WiFi.h>
 #include <LittleFS.h>
 #include "sensorStrategies/sensorProcessor.h"
-#include "sensorStrategies/ultrasonicSensor.h"
+// #include "sensorStrategies/ultrasonicSensor.h"
+#include "sensorStrategies/tfminiSensor.h"
 #include "sensorStrategies/medianCalculation.h"
 #include "calculationFactory.h"
 #include "calculationStore.h"
@@ -65,7 +166,7 @@ void setCalculationMethod(const String& method);
  */
 void setup() {
   Serial.begin(115200);
-
+  
   if (!LittleFS.begin(true)) {
     Serial.println("LittleFS failed to mount!");
   } else {
@@ -118,7 +219,7 @@ void setup() {
     Serial.println("Failed to fetch token, skipping OTA check");
     lastTokenRefresh = 0;
   } else {
-    checkForOtaUpdate(deviceId, jwtToken);
+    // checkForOtaUpdate(deviceId, jwtToken);
     lastTokenRefresh = millis();
   }
 
@@ -149,7 +250,7 @@ void setup() {
  *        measurements, uploads, commands, and OTA checks.
  */
 void loop() {
-  checkForNewVersion();
+  // checkForNewVersion();
 
   handleWifiConnection();
 
@@ -282,12 +383,25 @@ void handleCommands() {
   }
 }
 
-void setCalculationMethod(const String& method) {
+// void setCalculationMethod(const String& method) {
+//     delete processor;
+//     processor = new SensorProcessor(
+//         new UltrasonicSensor(TRIG_PIN, ECHO_PIN),
+//         createCalculation(method),
+//         MEDIAN_SAMPLES
+//     );
+//     Serial.println("[Sensor] Calculation method set to: " + method);
+// }
+
+void setCalculationMethod(const String& method)
+{
     delete processor;
+
     processor = new SensorProcessor(
-        new UltrasonicSensor(TRIG_PIN, ECHO_PIN),
+        new TFminiSensor(),
         createCalculation(method),
         MEDIAN_SAMPLES
     );
+
     Serial.println("[Sensor] Calculation method set to: " + method);
 }

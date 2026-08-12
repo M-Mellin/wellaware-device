@@ -23,7 +23,7 @@
  * @return true if already connected, false if connection is still in progress.
  */
 bool connectWifi(String ssid, String password) {
-  WiFi.begin(ssid, password);
+  WiFi.begin("AndroidApM", "test1234");
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Connecting...");
