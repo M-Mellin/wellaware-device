@@ -24,10 +24,15 @@ ApiClient::ApiClient() {
  * @param token  JWT token for authentication. Omitted if empty string.
  */
 void ApiClient::begin(HTTPClient& http, const String& url, const String& token) {
+  _client.stop();
+  delay(100);
+
   http.setTimeout(API_TIMEOUT_MS);
   http.setReuse(false);
   http.begin(_client, url);
+
   http.addHeader("Content-Type", "application/json");
+
   if (token.length() > 0) {
     http.addHeader("Authorization", "Bearer " + token);
   }

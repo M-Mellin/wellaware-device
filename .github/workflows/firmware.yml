@@ -1,0 +1,89 @@
+name: WellAware Firmware
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+
+  build-firmware:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    env:
+      ENV_NAME: arduino_nano_esp32
+      BIN_PATH: .pio/build/arduino_nano_esp32/firmware.bin
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Generate config.h
+        shell: bash
+        env:
+          ROOT_CA_CERT: ${{ secrets.ROOT_CA_CERT }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          ROOT_CA=$(echo "$ROOT_CA_CERT" | base64 -d)
+
+          cat > config.h << EOF
+          #pragma once
+
+          #define API_BASE_URL "$API_BASE_URL"
+          #define API_TIMEOUT_MS 5000
+
+          #define SETUP_AP_SSID "WellAware-Device-Setup"
+          #define SETUP_TIMEOUT_MS 30000
+
+          #define FLASH_SAVE_INTERVAL 15 * 60 * 1000
+          #define MEASUREMENTS_FILE "/measurements.bin"
+          #define MAX_MEASUREMENTS 500
+
+          #define ECHO_PIN 4
+          #define TRIG_PIN 5
+          #define MEDIAN_SAMPLES 12
+
+          #define DEFAULT_CALCULATION_METHOD "validation"
+          #define CALCULATION_METHOD_FILE "/calculation_method.txt"
+          #define VALIDATION_MIN_INTERVAL_SEC 60
+
+          #define TOKEN_REFRESH_INTERVAL 3600000
+          #define OTA_CHECK_INTERVAL 6UL * 60UL * 60UL * 1000UL
+
+          #define NTP_SERVER "pool.ntp.org"
+          #define GMT_OFFSET_SEC 0
+          #define DAYLIGHT_OFFSET_SEC 0
+
+          static const char ROOT_CA_CERT[] = R"($ROOT_CA)";
+          EOF
+
+      - name: Build firmware
+        run: pio run -e $ENV_NAME --disable-auto-clean
+
+      - name: Calculate SHA256
+        id: hash
+        run: |
+          SHA=$(sha256sum "$BIN_PATH" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: ${{ env.BIN_PATH }}
+          retention-days: 1
