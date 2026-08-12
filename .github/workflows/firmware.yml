@@ -12,6 +12,54 @@ permissions:
 
 jobs:
 
+  auto-tag:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create next version tag
+        env:
+          VERSION_MAJOR: ${{ vars.VERSION_MAJOR }}
+          VERSION_MINOR: ${{ vars.VERSION_MINOR }}
+        run: |
+          if [ -z "$VERSION_MAJOR" ] || [ -z "$VERSION_MINOR" ]; then
+            echo "ERROR: VERSION_MAJOR and VERSION_MINOR must be set"
+            exit 1
+          fi
+
+          git fetch --tags
+
+          PREFIX="v${VERSION_MAJOR}.${VERSION_MINOR}."
+
+          LATEST=$(git tag --sort=-v:refname \
+            | grep -E "^${PREFIX}[0-9]+$" \
+            | head -1 || true)
+
+          if [ -z "$LATEST" ]; then
+            PATCH=0
+          else
+            PATCH=$(echo "$LATEST" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="v${VERSION_MAJOR}.${VERSION_MINOR}.${PATCH}"
+
+          echo "Creating tag: $NEW_TAG"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag "$NEW_TAG" "$GITHUB_SHA"
+          git push origin "$NEW_TAG"
+
   build-firmware:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
