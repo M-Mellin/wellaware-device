@@ -219,7 +219,7 @@ void setup() {
     Serial.println("Failed to fetch token, skipping OTA check");
     lastTokenRefresh = 0;
   } else {
-    // checkForOtaUpdate(deviceId, jwtToken);
+    checkForOtaUpdate(deviceId, jwtToken);
     lastTokenRefresh = millis();
   }
 
@@ -382,7 +382,7 @@ void handleCommands() {
     startSetupMode();
   }
 }
-
+// DEPRECATED
 // void setCalculationMethod(const String& method) {
 //     delete processor;
 //     processor = new SensorProcessor(
